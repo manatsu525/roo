@@ -2,7 +2,7 @@
 
 cd /root
 
-echo -e "0.  install brook"
+echo -e "\n0.  install brook"
 echo -e "1.  remove brook"
 sleep 1
 read -p "请选择（仅填数字）:" num
