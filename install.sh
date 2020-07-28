@@ -50,6 +50,7 @@ if [[ "${num}" == "0" ]];then
     sleep 3
     service brook status
 elif [[ "${num}" == "1" ]];then
+    killall brook
     systemctl disable brook.service
     rm -rf /root/brook* /root/install.log /etc/systemd/system/brook.service
 fi
