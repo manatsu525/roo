@@ -26,7 +26,7 @@ if [["${num}" == "0"]];then
 
     [Install]
     WantedBy=multi-user.target
-EOF
+    EOF
 
     read -p "请输入监听地址（default:0.0.0.0）:" value
     [[ -z ${value} ]] && value="0.0.0.0"
