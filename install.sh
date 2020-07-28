@@ -2,9 +2,7 @@
 
 cd /root
 
-echo -e "\n0.  install brook"
-echo -e "1.  remove brook"
-sleep 1
+echo -e "0.  install brook      1.  remove brook"
 read -p "请选择（仅填数字）:" num
 
 if [["${num}" == "0"]];then
