@@ -2,6 +2,8 @@
 
 cd /root
 
+rm -rf brook*
+
 wget https://github.com/txthinking/brook/releases/download/v20200701/brook
 chmod +x brook
 
