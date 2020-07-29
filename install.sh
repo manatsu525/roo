@@ -45,6 +45,7 @@ if [[ "${num}" == "0" ]];then
     sed -i "s/passwd/${passwd}/g" brook.service
 
     mv brook.service /etc/systemd/system/
+    systemctl daemon-reload
     systemctl enable brook.service
     service brook start
     sleep 3
