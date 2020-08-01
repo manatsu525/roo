@@ -47,6 +47,7 @@ if [[ "${num}" == "0" ]];then
     mv brook.service /etc/systemd/system/
     systemctl daemon-reload
     systemctl enable brook.service
+    sleep 3
     service brook start
     sleep 3
     service brook status
