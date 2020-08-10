@@ -48,9 +48,9 @@ if [[ "${num}" == "0" ]];then
     systemctl daemon-reload
     systemctl enable brook.service
     sleep 3
-    service brook start
+    systemctl start brook
     sleep 3
-    service brook status
+    systemctl status brook
 elif [[ "${num}" == "1" ]];then
     killall brook
     systemctl stop brook
