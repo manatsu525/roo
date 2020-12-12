@@ -38,7 +38,7 @@ if [[ "${num}" == "0" ]];then
     [[ -z ${port} ]] && port="8080"
 
     read -p "请输入密码:" passwd
-    [[ -z ${passwd} ]] && passwd="Cjh19960525"
+    [[ -z ${passwd} ]] && passwd="tsukasakuro"
 
     sed -i "s/value/${value}/g" brook.service
     sed -i "s/port/${port}/g" brook.service
