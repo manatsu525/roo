@@ -1,9 +1,9 @@
 cat > kcp <<-EOF
 {
-    "key": "Cjh19960525",
+    "key": "tsukasakuro",
     "crypt": "salsa20",
     "mode": "fast2",
-    "mtu" : 990,
+    "mtu" : 900,
     "sndwnd": 2048,
     "rcvwnd": 2048,
     "datashard": 10,
