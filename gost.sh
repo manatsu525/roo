@@ -38,10 +38,10 @@ if [[ "${num}" == "0" ]];then
     read -p "请输入path:" path
     [[ -z ${path} ]] && path="sumire"
     
-    sed -i "s/wss/${value}/g" brook.service
-    sed -i "s/8443/${port}/g" brook.service
-    sed -i "s/sumire/${path}/g" brook.service
-    sed -i "s/passwd/${passwd}/g" brook.service
+    sed -i "s/wss/${value}/g" gost.service
+    sed -i "s/8443/${port}/g" gost.service
+    sed -i "s/sumire/${path}/g" gost.service
+    sed -i "s/passwd/${passwd}/g" gost.service
 
     mv gost.service /etc/systemd/system/
     systemctl daemon-reload
