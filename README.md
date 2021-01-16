@@ -4,4 +4,4 @@ bash <(curl -L -s https://raw.githubusercontent.com/manatsu525/roo/master/instal
 
 # gost
 
-bash <(curl -L -s https://raw.githubusercontent.com/manatsu525/roo/master/install.sh) | tee install.log
+bash <(curl -L -s https://raw.githubusercontent.com/manatsu525/roo/master/gost.sh) | tee install.log
