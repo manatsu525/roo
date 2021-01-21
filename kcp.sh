@@ -8,7 +8,7 @@ cat > kcp <<-EOF
     "rcvwnd": 2048,
     "datashard": 10,
     "parityshard": 3,
-    "dscp": 46,
+    "dscp": 0,
     "nocomp": true,
     "acknodelay": false,
     "nodelay": 0,
