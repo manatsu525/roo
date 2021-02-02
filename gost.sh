@@ -7,7 +7,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=root
-ExecStart=/root/gost -L=ss+wss://AEAD_CHACHA20_POLY1305:passwd@:8443?path=/sumire
+ExecStart=/root/gost -L=ss+wss://AEAD_AES_128_GCM:passwd@:8443?path=/sumire
 Restart=on-failure
 RestartSec=10s
 [Install]
