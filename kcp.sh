@@ -3,7 +3,7 @@ cat > kcp <<-EOF
     "key": "tsukasakuro",
     "crypt": "salsa20",
     "mode": "fast",
-    "mtu" : 1200,
+    "mtu" : 512,
     "sndwnd": 2048,
     "rcvwnd": 2048,
     "datashard": 30,
