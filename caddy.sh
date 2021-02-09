@@ -38,7 +38,7 @@ cd caddy
 wget -O caddy.tar.gz https://github.com/manatsu525/v2ray/releases/download/v3.05/caddy_v1.0.4_linux_amd64.tar.gz
 tar -xzvf caddy.tar.gz
 service
-mv gost.service /etc/systemd/system/
+mv caddy.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable caddy.service
 systemctl start caddy
