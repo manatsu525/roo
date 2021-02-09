@@ -16,7 +16,7 @@ cat > config.json <<-EOF
                         "email": "lineair069@gmail.com"
                     }
                 ],
-                "decryption": "none",
+                "decryption": "none"
             },
             "streamSettings": {
                 "network": "tcp",
