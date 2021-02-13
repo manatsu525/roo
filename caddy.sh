@@ -26,7 +26,7 @@ $domain {
     gzip
 	timeouts none
     browse
-    root /var/lib/transmission-daemon/downloads
+    root /usr/downloads
     proxy /natsu 127.0.0.1:${v2ray_port} {
         websocket
     }
