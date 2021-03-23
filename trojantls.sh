@@ -29,8 +29,8 @@ cat > /root/trojan.json <<EOF
         "tsukasakuro"
     ],
     "ssl": {
-        "cert": "server.crt",
-        "key": "server.key",
+        "cert": "plugin.crt",
+        "key": "plugin.key",
         "sni": "${domain}",
         "fallback_port": 1234
     }
