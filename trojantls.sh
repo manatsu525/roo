@@ -1,5 +1,22 @@
 #!/bin/bash
 
+service(){
+cat > caddy.service <<-EOF
+[Unit]
+Description=caddy(/etc/systemd/system/caddy.service)
+After=network.target
+Wants=network-online.target
+[Service]
+Type=simple
+User=root
+ExecStart=/root/caddy/caddy -agree=true -conf=/root/Caddyfile
+Restart=on-failure
+RestartSec=10s
+[Install]
+WantedBy=multi-user.target
+EOF
+}
+
 trojan(){
 cat > trojan.service <<-EOF
 [Unit]
@@ -18,6 +35,27 @@ EOF
 }
 
 read -p "input domain:" domain
+
+cd /root
+cat > Caddyfile <<-EOF
+$domain:80 {
+    gzip
+	timeouts none
+    browse
+    root /usr/downloads
+}
+EOF
+mkdir caddy
+cd caddy
+wget -O caddy.tar.gz https://github.com/manatsu525/v2ray/releases/download/v3.05/caddy_v1.0.4_linux_amd64.tar.gz
+tar -xzvf caddy.tar.gz
+service
+mv caddy.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable caddy.service
+systemctl start caddy
+
+cd /root
 cat > /root/trojan.json <<EOF
 {
     "run_type": "server",
@@ -32,7 +70,7 @@ cat > /root/trojan.json <<EOF
         "cert": "/root/plugin.crt",
         "key": "/root/plugin.key",
         "sni": "${domain}",
-        "fallback_port": 1234
+        "fallback_port": 80
     }
 }
 EOF
@@ -45,3 +83,4 @@ mv trojan.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable trojan.service
 systemctl start trojan
+
