@@ -22,4 +22,4 @@ route {
 }
 EOF
 
-./caddy start -config=/root/Caddyfile
+./caddy start
