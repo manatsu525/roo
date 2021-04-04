@@ -20,5 +20,6 @@ route {
     browse 
   }
 }
+EOF
 
 ./caddy start
