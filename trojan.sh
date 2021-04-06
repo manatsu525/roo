@@ -39,7 +39,7 @@ read -p "input domain:" domain
 read -p "input v2ray_port:" v2ray_port
 cat > Caddyfile <<-EOF
 $domain:443 {
-    tls self_signed
+    tls /root/plugin.crt /root/plugin.key
     gzip
 	timeouts none
     browse
