@@ -69,8 +69,7 @@ cat > /root/trojan.json <<EOF
     "ssl": {
         "cert": "/root/plugin.crt",
         "key": "/root/plugin.key",
-        "sni": "${domain}",
-        "fallback_port": 80
+        "sni": "${domain}"
     }
 }
 EOF
