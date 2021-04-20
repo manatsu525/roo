@@ -21,8 +21,11 @@ cd /root
 read -p "input domain:" domain
 read -p "input v2ray_port:" v2ray_port
 cat > Caddyfile <<-EOF
-$domain {
-    tls lineair069@gmail.com
+${domain}:80 {
+    redir https://${domain}{uri}
+}
+${domain}:443 {
+    tls /root/plugin.crt /root/plugin.key
     gzip
 	timeouts none
     browse
