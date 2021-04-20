@@ -1,5 +1,7 @@
 #!/bin/bash
 
+read -p "input domain:" dom
+
 cat > config.json <<EOF
 {
 "server":"0.0.0.0",
