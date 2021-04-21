@@ -83,3 +83,22 @@ mv caddy.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable caddy.service
 systemctl start caddy
+
+xray(){
+cat > xray.service <<-EOF
+[Unit]
+Description=xray(/etc/systemd/system/xray.service)
+After=network.target
+Wants=network-online.target
+[Service]
+Type=simple
+User=root
+ExecStart=/root/xray run -config /root/config.json
+Restart=on-failure
+RestartSec=10s
+[Install]
+WantedBy=multi-user.target
+EOF
+
+cd /root
+wget -O xray.zip https://github.com/manatsu525/roo/releases/download/1/Xray-linux-64.zip
