@@ -102,3 +102,9 @@ EOF
 
 cd /root
 wget -O xray.zip https://github.com/manatsu525/roo/releases/download/1/Xray-linux-64.zip
+unzip xray.zip
+xray
+mv xray.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable xray.service
+systemctl start xray
