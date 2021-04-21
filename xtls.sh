@@ -32,8 +32,8 @@ cat > config.json <<-EOF
                         "http/1.1"
                     ],
                     "certificates": [{
-                            "certificateFile": "/etc/xray/plugin.crt", // 换成你的证书，绝对路径
-                            "keyFile": "/etc/xray/plugin.key" // 换成你的私钥，绝对路径
+                            "certificateFile": "/root/plugin.crt", // 换成你的证书，绝对路径
+                            "keyFile": "/root/plugin.key" // 换成你的私钥，绝对路径
                         }
                     ]
                 }
