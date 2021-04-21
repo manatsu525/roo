@@ -99,6 +99,7 @@ RestartSec=10s
 [Install]
 WantedBy=multi-user.target
 EOF
+}
 
 cd /root
 wget -O xray.zip https://github.com/manatsu525/roo/releases/download/1/Xray-linux-64.zip
