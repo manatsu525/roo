@@ -16,7 +16,12 @@ cat > config.json <<-EOF
                         "email": "lineair069@gmail.com"
                     }
                 ],
-                "decryption": "none"
+                "decryption": "none",
+                "fallbacks": [
+                    {
+                        "dest": 80 // 或者回落到其它也防探测的代理
+                    }
+                ]
             },
             "streamSettings": {
                 "network": "tcp",
