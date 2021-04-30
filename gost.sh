@@ -47,17 +47,14 @@ EOF
 echo -e "0.ws  1.wss 2.ohttp 3.otls 4.kcp 5.remove"
 read -p "请选择（仅填数字）:" num
 
-read -p "method:" value
-[[ -z ${value} ]] && value="wss"
-
-read -p "请输入端口（default:8443）:" port
-[[ -z ${port} ]] && port="8443"
+read -p "请输入端口（default:8880）:" port
+[[ -z ${port} ]] && port="8880"
 
 read -p "请输入密码:" passwd
 [[ -z ${passwd} ]] && passwd="sumire"
 
 read -p "请输入path:" path
-[[ -z ${path} ]] && path="sumire"
+[[ -z ${path} ]] && path="natsu"
 
 case ${num} in
 	0 ) shadow="/root/gost -L=ss+ws://AEAD_CHACHA20_POLY1305:${passwd}@:${port}?path=\/${path}"
