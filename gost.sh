@@ -64,9 +64,9 @@ case ${num} in
 	;;
 	1 ) shadow="/root/gost -L=ss+wss://AEAD_CHACHA20_POLY1305:${passwd}@:${port}?path=\/${path}"
 	;;
-	2 ) shadow="/root/gost -L=ss+ohttp://AEAD_CHACHA20_POLY1305:${passwd}@:/${port}"
+	2 ) shadow="/root/gost -L=ss+ohttp://AEAD_CHACHA20_POLY1305:${passwd}@:${port}"
 	;;
-	3 ) shadow="/root/gost -L=ss+otls://AEAD_CHACHA20_POLY1305:${passwd}@:\/${port}"
+	3 ) shadow="/root/gost -L=ss+otls://AEAD_CHACHA20_POLY1305:${passwd}@:${port}"
 	;;
 	4 ) shadow="/root/gost -L=ss+kcp://AEAD_CHACHA20_POLY1305:${passwd}@:${port}?c=\/root/kcp"
 	;;
