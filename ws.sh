@@ -34,6 +34,7 @@ cat > /etc/nginx/conf.d/default.conf <<-EOF
 server {
     ### 1:
     server_name ${domain};
+    listen [::]:80;
     listen 80;
     rewrite ^(.*) https://\$server_name\$1 permanent;
     if (\$request_method  !~ ^(POST|GET)$) { return  501; }
@@ -62,6 +63,7 @@ server {
         proxy_buffering         off;
         proxy_buffer_size       8k;
     }
+    listen [::]:443 ssl http2;
     listen 443 ssl http2;
     server_name \$server_name;
     charset utf-8;
