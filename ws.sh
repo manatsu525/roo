@@ -85,15 +85,7 @@ server {
     server_tokens off;
 	
 	location / {
-        proxy_pass https://www.morinaga.co.jp/;
-        proxy_redirect     off;
-        proxy_connect_timeout      75; 
-        proxy_send_timeout         90; 
-        proxy_read_timeout         90; 
-        proxy_buffer_size          4k; 
-        proxy_buffers              4 32k; 
-        proxy_busy_buffers_size    64k; 
-        proxy_temp_file_write_size 64k; 
+        return 302 https://www.morinagamilk.co.jp/;
      }
         
 	location /file 
