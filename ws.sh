@@ -46,7 +46,7 @@ server {
     ### 3:
     ssl_certificate_key /root/plugin.key;
     ### 4:
-    location /sub2
+    location /natsu
     {
         proxy_pass              http://127.0.0.1:${v2ray_port};
         proxy_redirect          off;
