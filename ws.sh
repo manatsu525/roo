@@ -36,8 +36,8 @@ server {
     server_name ${domain};
 
     listen 80;
-    rewrite ^(.*) https://$server_name$1 permanent;
-    if ($request_method  !~ ^(POST|GET)$) { return  501; }
+    rewrite ^(.*) https://\$server_name\$1 permanent;
+    if (\$request_method  !~ ^(POST|GET)$) { return  501; }
     autoindex off;
     server_tokens off;
 }
@@ -56,9 +56,9 @@ server {
         proxy_redirect          off;
 
         proxy_http_version      1.1;
-        proxy_set_header        Upgrade $http_upgrade;
+        proxy_set_header        Upgrade \$http_upgrade;
         proxy_set_header        Connection "upgrade";
-        proxy_set_header        Host $host;
+        proxy_set_header        Host \$host;
 
         sendfile                on;
         tcp_nopush              on;
@@ -70,7 +70,7 @@ server {
     }
 
     listen 443 ssl http2;
-    server_name $server_name;
+    server_name \$server_name;
     charset utf-8;
 
     ssl_protocols TLSv1.2;
@@ -87,7 +87,7 @@ server {
     resolver_timeout 10s;
 
     # Security settings
-    if ($request_method  !~ ^(POST|GET)$) { return 501; }
+    if (\$request_method  !~ ^(POST|GET)$) { return 501; }
     add_header X-Frame-Options DENY;
     add_header X-XSS-Protection "1; mode=block";
     add_header X-Content-Type-Options nosniff;
