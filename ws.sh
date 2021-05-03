@@ -106,6 +106,13 @@ server {
         proxy_busy_buffers_size    64k; 
         proxy_temp_file_write_size 64k; 
      }
+        
+	location /file 
+        {
+	alias /usr/downloads;
+        autoindex on;            
+        autoindex_exact_size off;
+        }
 }
 EOF
 
