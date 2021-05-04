@@ -90,7 +90,7 @@ cat > trojan.json <<-EOF
     "path": "/natsu",
     "hostname": "${domain}"
   },
-    "shadowsocks": {
+  "shadowsocks": {
     "enabled": true,
     "method": "AES-128-GCM",
     "password": "tsukasakuro"
