@@ -91,7 +91,7 @@ cat > trojan.json <<-EOF
     "hostname": "${domain}"
   },
   "shadowsocks": {
-    "enabled": true,
+    "enabled": false,
     "method": "AES-128-GCM",
     "password": "tsukasakuro"
   }
