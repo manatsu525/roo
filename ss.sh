@@ -9,7 +9,7 @@ cat > config.json <<EOF
     "password":"sumire",
     "timeout":300,
     "method":"aes-256-gcm",
-    "fast_open":true,
+    "fast_open":false,
     "nameserver":"8.8.8.8",
     "mode":"tcp_and_udp"
 } 
