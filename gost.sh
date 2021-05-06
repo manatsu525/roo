@@ -44,7 +44,7 @@ EOF
 }
 
 
-echo -e "0.ws  1.wss 2.ohttp 3.otls 4.kcp 5.remove"
+echo -e "0.ws  1.none 2.ohttp 3.otls 4.kcp 5.remove"
 read -p "请选择（仅填数字）:" num
 
 read -p "请输入端口（default:8880）:" port
@@ -59,7 +59,7 @@ read -p "请输入path:" path
 case ${num} in
 	0 ) shadow="/root/gost -L=ss+ws://AEAD_CHACHA20_POLY1305:${passwd}@:${port}?path=\/${path}"
 	;;
-	1 ) shadow="/root/gost -L=ss+wss://AEAD_CHACHA20_POLY1305:${passwd}@:${port}?path=\/${path}"
+	1 ) shadow="/root/gost -L=ss://AEAD_AES_256_GCM:${passwd}@:${port}"
 	;;
 	2 ) shadow="/root/gost -L=ss+ohttp://AEAD_CHACHA20_POLY1305:${passwd}@:${port}"
 	;;
