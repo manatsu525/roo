@@ -1,14 +1,16 @@
+#!/bin/bash
+
+cd /root
+
 cat > config.json <<EOF
 {
     "server":"0.0.0.0",
-    "server_port":8080,
+    "server_port":8880,
     "password":"sumire",
     "timeout":300,
-    "method":"xchacha20-ietf-poly1305",
+    "method":"aes-256-gcm",
     "fast_open":true,
     "nameserver":"8.8.8.8",
-    "mode":"tcp_and_udp",
-    "plugin":"v2ray-plugin",
-    "plugin_opts":"server;path=/natsu;mux=0"
+    "mode":"tcp_and_udp"
 } 
 EOF
