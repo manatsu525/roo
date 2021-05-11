@@ -38,7 +38,10 @@ read -p "input domain:" domain
 
 cd /root
 cat > Caddyfile <<-EOF
-$domain:80 {
+${domain}:80 {
+    redir https://${domain}{uri}
+}
+$domain:8088 {
     gzip
 	timeouts none
     browse
@@ -62,7 +65,7 @@ cat > /root/trojan.json <<EOF
     "local_addr": "0.0.0.0",
     "local_port": 443,
     "remote_addr": "127.0.0.1",
-    "remote_port": 80,
+    "remote_port": 8088,
     "password": [
         "tsukasakuro"
     ],
