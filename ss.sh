@@ -2,15 +2,55 @@
 
 cd /root
 
-cat > config.json <<EOF
+read -p "input v2ray_port:" v2ray_port
+
+cat > config.json <<-EOF
 {
-    "server":"0.0.0.0",
-    "server_port":8880,
-    "password":"sumire",
-    "timeout":300,
-    "method":"aes-256-gcm",
-    "fast_open":false,
-    "nameserver":"8.8.8.8",
-    "mode":"tcp_and_udp"
-} 
+    "inbounds": [
+        {
+            "port": ${v2ray_port},
+            "protocol": "shadowsocks",
+            "settings": {
+                "clients": [
+                    {
+                        "password": "tsukasakuro",
+                        "method": "aes-256-gcm"
+                    }
+                ],
+                "network": "tcp,udp"
+            }
+        }
+    ],
+    "outbounds": [
+        {
+            "protocol": "freedom"
+        }
+    ]
+}
 EOF
+
+xray(){
+cat > xray.service <<-EOF
+[Unit]
+Description=xray(/etc/systemd/system/xray.service)
+After=network.target
+Wants=network-online.target
+[Service]
+Type=simple
+User=root
+ExecStart=/root/xray run -config /root/config.json
+Restart=on-failure
+RestartSec=10s
+[Install]
+WantedBy=multi-user.target
+EOF
+}
+
+cd /root
+wget -O xray.zip https://github.com/manatsu525/roo/releases/download/1/Xray-linux-64.zip
+unzip xray.zip
+xray
+mv xray.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable xray.service
+systemctl start xray
