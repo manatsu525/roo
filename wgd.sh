@@ -33,6 +33,7 @@ EOF
       echo "spublickey:$(cat spublickey)"
   ;;
   1 ) apt purge wireguard-tools -y
+      killall wireguard-go
   ;;
 esac
 
