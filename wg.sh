@@ -12,7 +12,6 @@ case ${num} in
       
       wget https://github.com/manatsu525/roo/releases/download/1/wireguard-go
       chmod +x wireguard-go
-      ./wireguard-go wg
       
       wg genkey | tee sprivatekey | wg pubkey > spublickey
       wg genkey | tee cprivatekey | wg pubkey > cpublickey
@@ -29,6 +28,8 @@ case ${num} in
       Endpoint = 198.51.100.1:19018
 EOF
       
+      cp wireguard-go /usr/sbin/wireguard-go
+      wg-quick up wg0
       echo "cprivatekey:$(cat cprivatekey)"
       echo "spublickey:$(cat spublickey)"
   ;;
