@@ -27,7 +27,7 @@ case ${num} in
       PublicKey = $(cat cpublickey) 
       AllowedIPs = 10.123.0.1/32 
       Endpoint = 198.51.100.1:19018
-      EOF
+EOF
       
       echo "cprivatekey:$(cat cprivatekey)"
       echo "spublickey:$(cat spublickey)"
