@@ -9,7 +9,7 @@ cat > config.json <<-EOF
     "inbounds": [
         {
             "listen": "0.0.0.0",
-            "port": 1234,
+            "port": ${v2ray_port},
             "protocol": "vmess",
             "settings": {
                 "clients": [
