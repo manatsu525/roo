@@ -8,7 +8,7 @@ cat > config.json <<-EOF
 {
 "inbound": {
     "protocol": "vmess",
-    "listen": "127.0.0.1",
+    "listen": "0.0.0.0",
  "port": ${v2ray_port},
  "settings": {"clients": [
         {"id": "3e88bf4b-a1ab-4c36-bc83-ea7d263e5239",
