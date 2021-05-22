@@ -128,3 +128,22 @@ mv xray.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable xray.service
 systemctl start xray
+
+cat >/root/vmess_qr.json <<-EOF
+{
+	"v": "2",
+	"ps": "${domain}",
+	"add": "${domain}",
+	"port": "443",
+	"id": "3e88bf4b-a1ab-4c36-bc83-ea7d263e5239",
+	"aid": "0",
+	"net": "ws",
+	"type": "none",
+	"host": "${domain}",
+	"path": "/natsu",
+	"tls": "tls"
+}
+EOF
+
+vmess="vmess://$(cat /etc/v2ray/vmess_qr.json | base64 -w 0)"
+echo $vmess
