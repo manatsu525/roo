@@ -17,7 +17,7 @@ cat > config.json <<-EOF
     ]},
  "streamSettings": {
  "network": "ws",
- "wsSettings": {"path":"/sumire"}
+ "wsSettings": {"path":"/natsu"}
     }
 },
 "outbound": {"protocol": "freedom"}
