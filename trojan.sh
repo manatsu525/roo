@@ -42,7 +42,7 @@ ${domain}:80 {
     redir https://${domain}{uri}
 }
 $domain:443 {
-    tls /root/plugin.crt /root/plugin.key
+    tls lineair069@gmail.com
     gzip
 	timeouts none
     browse
