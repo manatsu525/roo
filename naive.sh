@@ -3,7 +3,7 @@
 read -p "domain:" domain
 
 cd /root
-wget --no-check-certificate https://github.com/manatsu525/roo/releases/download/1/caddy && chmod +x caddy
+wget --no-check-certificate https://github.com/manatsu525/roo/releases/download/2/caddy && chmod +x caddy
 
 cat > Caddyfile <<-EOF
 :443, ${domain}
