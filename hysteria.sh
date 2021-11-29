@@ -9,7 +9,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=root
-ExecStart=/root/hysteria/hysteria -config hysteria.json server
+ExecStart=/root/hysteria/hysteria -config /root/hysteria.json server
 Restart=on-failure
 RestartSec=10s
 [Install]
@@ -34,6 +34,7 @@ EOF
 mkdir hysteria
 cd hysteria
 wget -O hysteria https://github.com/manatsu525/roo/releases/download/2/hysteria-linux-amd64
+chmod +x hysteria
 service
 mv hysteria.service /etc/systemd/system/
 systemctl daemon-reload
