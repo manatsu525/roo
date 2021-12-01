@@ -19,6 +19,7 @@ EOF
 
 cd /root
 read -p "input obfs:" obfs
+read -p "input passwd:" passwd
 read -p "input v2ray_port:" v2ray_port
 cat > hysteria.json <<-EOF
 {
@@ -26,6 +27,12 @@ cat > hysteria.json <<-EOF
   "cert": "/root/plugin.crt",
   "key": "/root/plugin.key",
   "obfs": "${obfs}",
+  "auth": { 
+    "mode": "password",
+    "config": {
+      "password": "${passwd}"
+    }
+  },
   "up_mbps": 100,
   "down_mbps": 100
 }
