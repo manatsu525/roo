@@ -69,7 +69,7 @@ elif [[ "${num}" == "1" ]];then
     sed -i "s/value/${value}/g" brook.service
     sed -i "s/port/${port}/g" brook.service
     sed -i "s/passwd/${passwd}/g" brook.service
-    sed -i "s/--path \/en//g" brook.service
+    sed -i "s/--path \/natsu//g" brook.service
 
     mv brook.service /etc/systemd/system/
     systemctl daemon-reload
