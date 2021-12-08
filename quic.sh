@@ -33,9 +33,6 @@ cat > config.json <<-EOF
                     },
                 "security": "tls",
                 "tlsSettings": {
-                    "alpn": [
-                        "quic"
-                    ],
                     "certificates": [{
                             "certificateFile": "/root/plugin.crt", 
                             "keyFile": "/root/plugin.key" 
