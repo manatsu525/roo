@@ -1,5 +1,7 @@
 #!/bin/bash
 
+read -p "input port:" port
+
 cd /root
 cat > config.json <<-EOF
 {
@@ -7,7 +9,7 @@ cat > config.json <<-EOF
         "loglevel": "warning"
     },
     "inbounds": [{
-            "port": 443,
+            "port": ${port},
             "protocol": "vmess",
             "settings": {
                 "clients": [{
