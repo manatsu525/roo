@@ -4,6 +4,8 @@ cd /root
 
 read -p "input v2ray_port:" v2ray_port
 read -p "input v2ray_domain:" domain
+export v2ray_port
+export domain
 
 cat > config.json <<-EOF
 {
