@@ -50,6 +50,8 @@ systemctl daemon-reload
 systemctl enable xray.service
 systemctl start xray
 
+bash <(curl -L -s https://raw.githubusercontent.com/manatsu525/roo/master/caddya.sh)
+
 cat >/root/vmess_qr.json <<-EOF
 {
 	"v": "2",
