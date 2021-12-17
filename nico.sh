@@ -3,6 +3,7 @@ read -p "domain:" domain
 read -p "port:" port
 read -p "path:(default /natsu)" path
 [[ -z ${path} ]] && path="/natsu"
+read -p "page:(default https://www.morinagamilk.co.jp)" page
 [[ -z ${page} ]] && page="https://www.morinagamilk.co.jp"
 
 if [[ ! -e brook ]];then
