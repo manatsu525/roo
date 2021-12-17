@@ -11,4 +11,4 @@ if [[ ! -e brook ]];then
   chmod +x ./nico
 fi
 
-./nico ${domain} ${page} ${domain}/${path} http://127.0.0.1:${port} ${domain}/file /usr/downloads &
+./nico ${domain} ${page} ${domain}${path} http://127.0.0.1:${port} ${domain}/file /usr/downloads &
