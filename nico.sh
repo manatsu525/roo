@@ -6,7 +6,7 @@ read -p "path:(default /natsu)" path
 read -p "page:(default https://www.morinagamilk.co.jp)" page
 [[ -z ${page} ]] && page="https://www.morinagamilk.co.jp"
 
-if [[ ! -e brook ]];then
+if [[ ! -e nico ]];then
   wget https://github.com/manatsu525/roo/releases/download/1/nico
   chmod +x ./nico
 fi
