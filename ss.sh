@@ -2,43 +2,55 @@
 
 cd /root
 
-read -p "input v2ray_port:" v2ray_port
+read -p "input ss_port:" ss_port
+read -p "input passwd(default=sumire):" passwd
+[[ -z $passwd ]] && passwd="sumire"
+read -p "input path(default=/natsu):" path
+[[ -z $path ]] && passwd="/natsu"
+read -p "1.xchacha20-ietf-poly1305 2.chacha20-ietf-poly1305 3.aes-128-gcm 4.aes-192-gcm 5.aes-256-gcm": sel
+case $sel in
+    1) method="xchacha20-ietf-poly1305";;
+    2) method="chacha20-ietf-poly1305";;
+    3) method="aes-128-gcm";;
+    4) method="aes-192-gcm";;
+    5) method="aes-256-gcm";;
+esac
 
-cat > config.json <<-EOF
-{
-    "inbounds": [
-        {
-            "port": ${v2ray_port},
-            "protocol": "shadowsocks",
-            "settings": {
-                "clients": [
-                    {
-                        "password": "tsukasakuro",
-                        "method": "aes-256-gcm"
-                    }
-                ],
-                "network": "tcp,udp"
-            }
-        }
-    ],
-    "outbounds": [
-        {
-            "protocol": "freedom"
-        }
-    ]
+download(){
+    apt update -y && apt install snapd -y
+    snap install core
+    snap install shadowsocks-libev
+    wget https://github.com/manatsu525/roo/releases/download/1/v2ray-plugin
+    chmod +x ./v2ray-plugin
 }
-EOF
 
-xray(){
-cat > xray.service <<-EOF
+ss-ws(){
+cat > ss.service <<-EOF
 [Unit]
-Description=xray(/etc/systemd/system/xray.service)
+Description=ss(/etc/systemd/system/ss.service)
 After=network.target
 Wants=network-online.target
 [Service]
 Type=simple
 User=root
-ExecStart=/root/xray run -config /root/config.json
+ExecStart=/snap/bin/shadowsocks-libev.ss-server -c /root/ss.json -p ${port} --plugin /root/v2ray-plugin --plugin-opts "server;path=${path}"
+Restart=on-failure
+RestartSec=10s
+[Install]
+WantedBy=multi-user.target
+EOF
+}
+
+ss(){
+cat > ss.service <<-EOF
+[Unit]
+Description=ss(/etc/systemd/system/ss.service)
+After=network.target
+Wants=network-online.target
+[Service]
+Type=simple
+User=root
+ExecStart=/snap/bin/shadowsocks-libev.ss-server -c /root/ss.json -p ${port} 
 Restart=on-failure
 RestartSec=10s
 [Install]
@@ -47,10 +59,27 @@ EOF
 }
 
 cd /root
-wget -O xray.zip https://github.com/manatsu525/roo/releases/download/1/Xray-linux-64.zip
-unzip xray.zip
-xray
-mv xray.service /etc/systemd/system/
+
+read -p "1.ss 2.ss-ws": sel2
+case $sel2 in
+    1) ss;;
+    2) ss-ws;;
+esac
+
+download
+
+cat > ss.json <<-EOF
+{
+    "server":"0.0.0.0",
+    "password":"${passwd}",
+    "timeout":300,
+    "method":"${method}",
+    "fast_open":false,
+    "mode":"tcp_and_udp"
+}
+EOF
+
+mv ss.service /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable xray.service
-systemctl start xray
+systemctl enable ss.service
+systemctl start ss
