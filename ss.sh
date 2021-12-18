@@ -2,7 +2,7 @@
 
 cd /root
 
-read -p "input ss_port:" ss_port
+read -p "input ss_port:" port
 read -p "input passwd(default=sumire):" passwd
 [[ -z $passwd ]] && passwd="sumire"
 read -p "input path(default=/natsu):" path
