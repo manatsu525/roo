@@ -60,10 +60,15 @@ EOF
 
 cd /root
 
-read -p "1.ss 2.ss-ws": sel2
+read -p "1.ss 2.ss-ws 3.remove": sel2
 case $sel2 in
     1) ss;;
     2) ss-ws;;
+    3) systemctl stop ss
+       systemctl disable ss.service
+       rm /etc/systemd/system/ss.service
+       snap remove shadowsocks.libev
+    ;;   
 esac
 
 download
