@@ -67,7 +67,7 @@ case $sel2 in
     3) systemctl stop ss
        systemctl disable ss.service
        rm /etc/systemd/system/ss.service
-       snap remove shadowsocks.libev
+       snap remove shadowsocks-libev
     ;;   
 esac
 
