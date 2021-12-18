@@ -6,7 +6,7 @@ read -p "input ss_port:" ss_port
 read -p "input passwd(default=sumire):" passwd
 [[ -z $passwd ]] && passwd="sumire"
 read -p "input path(default=/natsu):" path
-[[ -z $path ]] && passwd="/natsu"
+[[ -z $path ]] && path="/natsu"
 read -p "1.xchacha20-ietf-poly1305 2.chacha20-ietf-poly1305 3.aes-128-gcm 4.aes-192-gcm 5.aes-256-gcm": sel
 case $sel in
     1) method="xchacha20-ietf-poly1305";;
