@@ -20,7 +20,7 @@ download(){
     apt update -y && apt install snapd -y
     snap install core
     snap install shadowsocks-libev
-    wget https://github.com/manatsu525/roo/releases/download/1/v2ray-plugin
+    [[! -e v2ray-plugin ]] && wget https://github.com/manatsu525/roo/releases/download/1/v2ray-plugin
     chmod +x ./v2ray-plugin
 }
 
