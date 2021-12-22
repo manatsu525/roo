@@ -41,6 +41,23 @@ WantedBy=multi-user.target
 EOF
 }
 
+ss-ws-muxoff(){
+cat > ss.service <<-EOF
+[Unit]
+Description=ss(/etc/systemd/system/ss.service)
+After=network.target
+Wants=network-online.target
+[Service]
+Type=simple
+User=root
+ExecStart=/snap/bin/shadowsocks-libev.ss-server -c /root/ss.json -p ${port} --plugin /root/v2ray-plugin --plugin-opts "server;path=${path};mux=0"
+Restart=on-failure
+RestartSec=10s
+[Install]
+WantedBy=multi-user.target
+EOF
+}
+
 ss(){
 cat > ss.service <<-EOF
 [Unit]
@@ -60,11 +77,12 @@ EOF
 
 cd /root
 
-read -p "1.ss 2.ss-ws 3.remove": sel2
+read -p "1.ss 2.ss-ws 3.ss-ws-muxoff 4.remove": sel2
 case $sel2 in
     1) ss;;
     2) ss-ws;;
-    3) systemctl stop ss
+    3) ss-ws-muxoff;;
+    4) systemctl stop ss
        systemctl disable ss.service
        rm /etc/systemd/system/ss.service
        snap remove shadowsocks-libev
