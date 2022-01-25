@@ -35,6 +35,8 @@ EOF
 }
 
 read -p "input domain:" domain
+read -p "input password(default: sumire):" passwd
+[[ -z ${passwd} ]] && passwd="sumire"
 
 cd /root
 cat > Caddyfile <<-EOF
@@ -64,7 +66,7 @@ cat > /root/trojan.json <<EOF
     "remote_addr": "127.0.0.1",
     "remote_port": 80,
     "password": [
-        "tsukasakuro"
+        "${passwd}"
     ],
     "ssl": {
         "cert": "/root/plugin.crt",
