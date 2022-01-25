@@ -37,6 +37,8 @@ EOF
 cd /root
 read -p "input domain:" domain
 read -p "input v2ray_port:" v2ray_port
+read -p "input password(default: sumire):" passwd
+[[ -z ${passwd} ]] && passwd="sumire"
 cat > Caddyfile <<-EOF
 ${domain}:80 {
     redir https://${domain}{uri}
@@ -76,7 +78,7 @@ cat > trojan.json <<-EOF
   "remote_port": 80,
   "log_level": 3,
   "password": [
-    "tsukasakuro"
+    "${passwd}"
   ],
   "transport_plugin": {
     "enabled": true,
@@ -93,7 +95,7 @@ cat > trojan.json <<-EOF
   "shadowsocks": {
     "enabled": false,
     "method": "AES-128-GCM",
-    "password": "tsukasakuro"
+    "password": "${passwd}"
   }
 }
 EOF
