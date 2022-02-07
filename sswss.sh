@@ -14,7 +14,7 @@ cat > config.json <<-EOF
  "port": ${v2ray_port},
  "settings": {
     "email": "lineair069@gmail.com",
-    "method": "aes-256-gcm",
+    "method": "chacha20-ietf-poly1305",
     "password": "sumire",
     "level": 0,
     "network": "tcp,udp"
@@ -32,16 +32,6 @@ EOF
 cd /root
 apt install nginx -y
 cat > /etc/nginx/conf.d/default.conf <<-EOF
-server {
-    ### 1:
-    server_name ${domain};
-    listen [::]:80;
-    listen 80;
-    rewrite ^(.*) https://\$server_name\$1 permanent;
-    if (\$request_method  !~ ^(POST|GET)$) { return  501; }
-    autoindex off;
-    server_tokens off;
-}
 server {
     ### 2:
     ssl_certificate /root/plugin.crt;
