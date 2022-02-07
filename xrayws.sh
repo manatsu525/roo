@@ -53,7 +53,15 @@ systemctl daemon-reload
 systemctl enable xray.service
 systemctl start xray
 
-bash <(curl -L -s https://raw.githubusercontent.com/manatsu525/roo/master/caddya.sh)
+read -p "cert type: 1.auto 2.self-signed 3.none" type
+case $type in
+    1) bash <(curl -L -s https://raw.githubusercontent.com/manatsu525/roo/master/caddya.sh) 
+    ;;
+    2) bash <(curl -L -s https://raw.githubusercontent.com/manatsu525/roo/master/caddy.sh) 
+    ;;
+    3) echo "NO TLS"
+    ;;
+esac
 
 cat >/root/vmess_qr.json <<-EOF
 {
