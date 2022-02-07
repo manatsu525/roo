@@ -72,12 +72,20 @@ cd /root
 read -p "input domain:" domain
 cat > Caddyfile <<-EOF
 ${domain}:80 {
+    redir https://${domain}{uri}:8448
+}
+${domain}:8448 {
+    tls /root/plugin.crt /root/plugin.key
     gzip
 	timeouts none
     browse
     root /usr/downloads
+    proxy /natsu 127.0.0.1:${v2ray_port} {
+        websocket
+    }
 }
 EOF
+
 mkdir caddy
 cd caddy
 wget -O caddy.tar.gz https://github.com/manatsu525/v2ray/releases/download/v3.05/caddy_v1.0.4_linux_amd64.tar.gz
