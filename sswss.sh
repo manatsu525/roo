@@ -100,6 +100,8 @@ server {
 }
 EOF
 
+sed -i "s/www-data/root/g" /etc/nginx/nginx.conf
+
 systemctl daemon-reload
 systemctl restart nginx
 systemctl enable nginx.service
