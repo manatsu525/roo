@@ -25,11 +25,13 @@ read -p "input password(default: sumire):" passwd
 export v2ray_port
 export domain
 
-read -p "cert type: 1.auto 2.self-signed" type
+read -p "cert type: 1.auto 2.self-signed 3.none" type
 case $type in
     1) bash <(curl -L -s https://raw.githubusercontent.com/manatsu525/roo/master/caddya.sh) 
     ;;
     2) bash <(curl -L -s https://raw.githubusercontent.com/manatsu525/roo/master/caddy.sh) 
+    ;;
+    3) echo "NO TLS"
     ;;
 esac
 
