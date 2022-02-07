@@ -18,8 +18,8 @@ EOF
 }
 
 cd /root
-read -p "input domain:" domain
-read -p "input v2ray_port:" v2ray_port
+[[ -z ${domain} ]] && read -p "input domain:" domain
+[[ -z ${v2ray_port} ]] && read -p "input v2ray_port:" v2ray_port
 cat > Caddyfile <<-EOF
 ${domain}:443 {
     tls /root/plugin.crt /root/plugin.key
