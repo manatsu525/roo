@@ -79,7 +79,7 @@ esac
 cd /root
 service
 sed -i "/ExecStart/c ExecStart=${shadow}" gost.service
-wget -O gost.gz "https://github.com/manatsu525/gost/releases/download/v2.11.1/gost-linux-amd64-2.11.1.gz" && gzip -d gost.gz && chmod +x gost
+wget -O gost.gz "https://github.com/manatsu525/gost/releases/download/v2.11.1/gost-linux-amd64-2.11.2.gz" && gzip -d gost.gz && chmod +x gost
 mv gost.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable gost.service
