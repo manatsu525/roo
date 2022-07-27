@@ -15,6 +15,10 @@ source ~/.bashrc
 
 go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 ~/go/bin/xcaddy build --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive
+if [[ $? -ne 0 ]]; then
+  echo "fail"
+  exit 0
+fi
 
 cat > Caddyfile <<-EOF
 :443, ${domain}
