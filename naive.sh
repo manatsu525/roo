@@ -38,3 +38,4 @@ route {
 EOF
 
 ./caddy start
+rm ~/go/* -rf
