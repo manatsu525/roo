@@ -39,23 +39,7 @@ case $type in
     ;;
     3) echo "NO TLS"
     ;;
-    4）cat > config.json <<-EOF
-{
-"inbound": {
-    "protocol": "shadowsocks",
-    "listen": "127.0.0.1",
- "port": ${v2ray_port},
- "settings": {
-    "email": "lineair069@gmail.com",
-    "method": "2022-blake3-chacha20-poly1305",
-    "password": "6xt9P+XsEdRkvVVZsPUg0v+cxt8rIztTXp1VQW2DJQ8=",
-    "level": 0,
-    "network": "tcp,udp"
-    }
-},
-"outbound": {"protocol": "freedom"}
-}
-EOF
+    4）bash <(curl -L -s https://raw.githubusercontent.com/manatsu525/roo/master/ss-2022.sh)
     ;;
 esac
 
