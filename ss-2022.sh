@@ -6,7 +6,7 @@ cat > config.json <<-EOF
 {
 "inbound": {
     "protocol": "shadowsocks",
-    "listen": "127.0.0.1",
+    "listen": "0.0.0.0",
  "port": ${v2ray_port},
  "settings": {
     "email": "lineair069@gmail.com",
