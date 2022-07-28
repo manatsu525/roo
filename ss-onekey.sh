@@ -39,7 +39,7 @@ case $type in
     ;;
     3) echo "NO TLS"
     ;;
-    4）bash <(curl -L -s https://raw.githubusercontent.com/manatsu525/roo/master/ss-2022.sh)
+    4) bash <(curl -L -s https://raw.githubusercontent.com/manatsu525/roo/master/ss-2022.sh)
     ;;
 esac
 
