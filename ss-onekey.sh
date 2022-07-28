@@ -7,7 +7,7 @@ read -p "input v2ray_port:" v2ray_port
 export v2ray_port
 export domain
 
-cat > ss.json <<-EOF
+cat > config.json <<-EOF
 {
 "inbound": {
     "protocol": "shadowsocks",
@@ -39,7 +39,7 @@ case $type in
     ;;
     3) echo "NO TLS"
     ;;
-    4）cat > ss.json <<-EOF
+    4）cat > config.json <<-EOF
     {
     "inbound": {
         "protocol": "shadowsocks",
@@ -59,7 +59,7 @@ case $type in
 esac
 
 xray(){
-cat > ss.service <<-EOF
+cat > xray.service <<-EOF
 [Unit]
 Description=xray(/etc/systemd/system/xray.service)
 After=network.target
@@ -67,7 +67,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=root
-ExecStart=/root/xray run -config /root/ss.json
+ExecStart=/root/xray run -config /root/config.json
 Restart=on-failure
 RestartSec=10s
 [Install]
@@ -79,7 +79,7 @@ cd /root
 wget -O xray.zip https://github.com/manatsu525/roo/releases/download/1/Xray-linux-64.zip
 unzip xray.zip
 xray
-mv ss.service /etc/systemd/system/
+mv xray.service /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable ss.service
-systemctl start ss
+systemctl enable xray.service
+systemctl start xray
