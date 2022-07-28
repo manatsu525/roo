@@ -2,72 +2,72 @@
 
 cd /root
 
-read -p "input ss_port:" port
-read -p "input passwd(default=sumire):" passwd
-[[ -z $passwd ]] && passwd="sumire"
-read -p "input path(default=/natsu):" path
-[[ -z $path ]] && path="/natsu"
-read -p "1.xchacha20-ietf-poly1305 2.chacha20-ietf-poly1305 3.aes-128-gcm 4.aes-192-gcm 5.aes-256-gcm": sel
-case $sel in
-    1) method="xchacha20-ietf-poly1305";;
-    2) method="chacha20-ietf-poly1305";;
-    3) method="aes-128-gcm";;
-    4) method="aes-192-gcm";;
-    5) method="aes-256-gcm";;
+read -p "input domain:" domain
+read -p "input v2ray_port:" v2ray_port
+export v2ray_port
+export domain
+
+cat > ss.json <<-EOF
+{
+"inbound": {
+    "protocol": "shadowsocks",
+    "listen": "127.0.0.1",
+ "port": ${v2ray_port},
+ "settings": {
+    "email": "lineair069@gmail.com",
+    "method": "2022-blake3-chacha20-poly1305",
+    "password": "6xt9P+XsEdRkvVVZsPUg0v+cxt8rIztTXp1VQW2DJQ8=",
+    "level": 0,
+    "network": "tcp,udp"
+    },
+ "streamSettings": {
+ "network": "ws",
+ "wsSettings": {"path":"/natsu"}
+    }
+},
+"outbound": {"protocol": "freedom"}
+}
+EOF
+
+
+cd /root
+read -p "cert type: 1.auto 2.self-signed 3.none 4.without ws" type
+case $type in
+    1) bash <(curl -L -s https://raw.githubusercontent.com/manatsu525/roo/master/caddya.sh) 
+    ;;
+    2) bash <(curl -L -s https://raw.githubusercontent.com/manatsu525/roo/master/caddy.sh) 
+    ;;
+    3) echo "NO TLS"
+    ;;
+    4）cat > ss.json <<-EOF
+    {
+    "inbound": {
+        "protocol": "shadowsocks",
+        "listen": "127.0.0.1",
+     "port": ${v2ray_port},
+     "settings": {
+        "email": "lineair069@gmail.com",
+        "method": "2022-blake3-chacha20-poly1305",
+        "password": "6xt9P+XsEdRkvVVZsPUg0v+cxt8rIztTXp1VQW2DJQ8=",
+        "level": 0,
+        "network": "tcp,udp"
+        }
+    },
+    "outbound": {"protocol": "freedom"}
+    }
+    EOF
 esac
 
-download(){
-    apt update -y && apt install snapd -y
-    snap install core
-    snap install shadowsocks-libev
-    [[ ! -e v2ray-plugin ]] && wget https://github.com/manatsu525/roo/releases/download/1/v2ray-plugin
-    chmod +x ./v2ray-plugin
-}
-
-ss-ws(){
+xray(){
 cat > ss.service <<-EOF
 [Unit]
-Description=ss(/etc/systemd/system/ss.service)
+Description=xray(/etc/systemd/system/xray.service)
 After=network.target
 Wants=network-online.target
 [Service]
 Type=simple
 User=root
-ExecStart=/snap/bin/shadowsocks-libev.ss-server -c /root/ss.json -p ${port} --plugin /root/v2ray-plugin --plugin-opts "server;path=${path}"
-Restart=on-failure
-RestartSec=10s
-[Install]
-WantedBy=multi-user.target
-EOF
-}
-
-ss-ws-muxoff(){
-cat > ss.service <<-EOF
-[Unit]
-Description=ss(/etc/systemd/system/ss.service)
-After=network.target
-Wants=network-online.target
-[Service]
-Type=simple
-User=root
-ExecStart=/snap/bin/shadowsocks-libev.ss-server -c /root/ss.json -p ${port} --plugin /root/v2ray-plugin --plugin-opts "server;path=${path};mux=0"
-Restart=on-failure
-RestartSec=10s
-[Install]
-WantedBy=multi-user.target
-EOF
-}
-
-ss(){
-cat > ss.service <<-EOF
-[Unit]
-Description=ss(/etc/systemd/system/ss.service)
-After=network.target
-Wants=network-online.target
-[Service]
-Type=simple
-User=root
-ExecStart=/snap/bin/shadowsocks-libev.ss-server -c /root/ss.json -p ${port} 
+ExecStart=/root/xray run -config /root/ss.json
 Restart=on-failure
 RestartSec=10s
 [Install]
@@ -76,34 +76,9 @@ EOF
 }
 
 cd /root
-
-read -p "1.ss 2.ss-ws 3.ss-ws-muxoff 4.remove": sel2
-case $sel2 in
-    1) ss;;
-    2) ss-ws;;
-    3) ss-ws-muxoff;;
-    4) systemctl stop ss
-       systemctl disable ss.service
-       rm /etc/systemd/system/ss.service
-       snap remove shadowsocks-libev
-       killall ss-server
-       exit 0
-    ;;   
-esac
-
-download
-
-cat > ss.json <<-EOF
-{
-    "server":"0.0.0.0",
-    "password":"${passwd}",
-    "timeout":300,
-    "method":"${method}",
-    "fast_open":false,
-    "mode":"tcp_and_udp"
-}
-EOF
-
+wget -O xray.zip https://github.com/manatsu525/roo/releases/download/1/Xray-linux-64.zip
+unzip xray.zip
+xray
 mv ss.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable ss.service
