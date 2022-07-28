@@ -56,6 +56,7 @@ case $type in
 "outbound": {"protocol": "freedom"}
 }
 EOF
+    ;;
 esac
 
 xray(){
