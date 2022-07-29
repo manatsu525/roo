@@ -1,9 +1,8 @@
 #!/bin/bash
 
-read -p "domain:" domain
 
 cd /root
-wget --no-check-certificate -O tuic https://github.com/manatsu525/roo/releases/download/2/tuic-server-0.8.1-x86_64-linux-gnu
+wget --no-check-certificate -O tuic https://github.com/manatsu525/roo/releases/download/2/tuic-server-0.8.1-x86_64-linux-gnu && chmod +x ./tuic
 
 cat > tuic.json <<-EOF
 {
