@@ -7,7 +7,7 @@ wget --no-check-certificate -O tuic https://github.com/manatsu525/roo/releases/d
 cat > tuic.json <<-EOF
 {
     "port": 443,
-    "token": "sumire",
+    "token": ["sumire"],
     "certificate": "/root/plugin.crt",
     "private_key": "/root/plugin.key",
 
