@@ -45,8 +45,4 @@ mkdir hysteria
 cd hysteria
 wget -O hysteria https://github.com/manatsu525/roo/releases/download/2/hysteria-linux-amd64
 chmod +x hysteria
-service
-mv hysteria.service /etc/systemd/system/
-systemctl daemon-reload
-systemctl enable hysteria.service
-systemctl start hysteria
+nohup /root/hysteria/hysteria -config /root/hysteria.json server &
