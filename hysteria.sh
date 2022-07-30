@@ -1,5 +1,7 @@
 #!/bin/bash
 
+cd /root
+
 service(){
 cat > hysteria.service <<-EOF
 [Unit]
@@ -43,6 +45,7 @@ EOF
 
 mkdir hysteria
 cd hysteria
+service
 wget -O hysteria https://github.com/manatsu525/roo/releases/download/2/hysteria-linux-amd64
 chmod +x hysteria
 nohup /root/hysteria/hysteria -config /root/hysteria.json server &
