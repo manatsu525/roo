@@ -11,7 +11,7 @@ cat > tuic.json <<-EOF
     "certificate": "/root/plugin.crt",
     "private_key": "/root/plugin.key",
 
-    "ip": "0.0.0.0",
+    "ip": "::",
     "congestion_controller": "bbr",
     "max_idle_time": 15000,
     "authentication_timeout": 1000,
