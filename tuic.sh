@@ -2,7 +2,7 @@
 
 
 cd /root
-wget --no-check-certificate -O tuic https://github.com/manatsu525/roo/releases/download/2/tuic-server-0.8.4-x86_64-linux-gnu && chmod +x ./tuic
+wget --no-check-certificate -O tuic https://github.com/manatsu525/roo/releases/download/2/tuic-server-0.8.5-x86_64-linux-gnu && chmod +x ./tuic
 
 cat > tuic.json <<-EOF
 {
