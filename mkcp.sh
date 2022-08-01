@@ -26,7 +26,7 @@ cat > config.json <<-EOF
                 "tti": 30,
                 "uplinkCapacity": 100,
                 "downlinkCapacity": 100,
-                "congestion": false,
+                "congestion": true,
                 "readBufferSize": 2,
                 "writeBufferSize": 2,
                 "header": {
