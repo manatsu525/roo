@@ -39,6 +39,7 @@ cat > hysteria.json <<-EOF
     }
   },
   "up_mbps": 100,
+  //"resolve_preference": "6",
   "down_mbps": 100
 }
 EOF
