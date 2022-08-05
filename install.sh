@@ -95,7 +95,7 @@ elif [[ "${num}" == "3" ]];then
     [[ -z ${passwd} ]] && passwd="tsukasakuro"
 
     sed -i "s/wsserver/wssserver/g" brook.service
-    sed -i "s/-l value:port/--domain ${value}/g" brook.service
+    sed -i "s/-l value:port/--domainaddress ${value}:${port}/g" brook.service
     sed -i "s/passwd/${passwd}/g" brook.service
 
     mv brook.service /etc/systemd/system/
