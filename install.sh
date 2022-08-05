@@ -10,7 +10,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=root
-ExecStart=/root/brook wsserver -l value:port -p passwd --path /natsu
+ExecStart=/root/brook wsserver -l :port -p passwd --path /natsu
 Restart=on-failure
 RestartSec=10s
 
