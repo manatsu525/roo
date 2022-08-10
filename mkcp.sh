@@ -7,17 +7,14 @@ read -p "input v2ray_port:" v2ray_port
 cat > config.json <<-EOF
 {
     "inbound": {
-        "protocol": "vless",
+        "protocol": "vmess",
         "listen": "0.0.0.0",
         "port": ${v2ray_port},
         "settings": {
             "clients": [{
-                    "id": "3e88bf4b-a1ab-4c36-bc83-ea7d263e5239",
-                    "level": 0,
-                    "email": "lineair069@gmail.com"
+                    "id": "3e88bf4b-a1ab-4c36-bc83-ea7d263e5239"
                 }
-            ], 
-                    "decryption": "none"
+            ]
         },
         "streamSettings": {
             "network": "kcp",
