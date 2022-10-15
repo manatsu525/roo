@@ -17,6 +17,8 @@ RestartSec=10s
 [Install]
 WantedBy=multi-user.target
 EOF
+
+mv hysteria.service /etc/systemd/system/
 }
 
 cd /root
