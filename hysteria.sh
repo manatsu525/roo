@@ -30,6 +30,7 @@ read -p "input v2ray_port:" v2ray_port
 cat > hysteria.json <<-EOF
 {
   "listen": ":${v2ray_port}",
+  //"protocol": "wechat-video", // 留空或 "udp", "wechat-video", "faketcp"
   "cert": "/root/plugin.crt",
   "key": "/root/plugin.key",
   "obfs":"${obfs}",
