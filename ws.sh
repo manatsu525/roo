@@ -3,7 +3,7 @@
 cd /root
 
 read -p "input domain:" domain
-
+export domain
 read -p "input v2ray_port:" v2ray_port
 
 cat > config.json <<-EOF
@@ -104,6 +104,8 @@ sed -i "s/www-data/root/g" /etc/nginx/nginx.conf
 systemctl daemon-reload
 systemctl restart nginx
 systemctl enable nginx.service
+
+bash <(curl -L -s https://raw.githubusercontent.com/manatsu525/roo/master/acme-nginx.sh) 
 
 xray(){
 cat > xray.service <<-EOF
