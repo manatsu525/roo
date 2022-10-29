@@ -105,7 +105,6 @@ systemctl daemon-reload
 systemctl restart nginx
 systemctl enable nginx.service
 
-bash <(curl -L -s https://raw.githubusercontent.com/manatsu525/roo/master/acme-nginx.sh) 
 
 xray(){
 cat > xray.service <<-EOF
