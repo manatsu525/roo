@@ -30,6 +30,26 @@ EOF
 
 cd /root
 apt install nginx -y
+
+sed -i "s/www-data/root/g" /etc/nginx/nginx.conf
+
+cat > /etc/nginx/conf.d/default.conf <<-EOF
+server {
+    ### 1:
+    server_name ${domain};
+    listen [::]:80;
+    listen 80;
+    if (\$request_method  !~ ^(POST|GET)$) { return  501; }
+    autoindex off;
+    server_tokens off;
+}
+EOF
+
+systemctl daemon-reload
+systemctl restart nginx
+
+bash <(curl -L -s https://raw.githubusercontent.com/manatsu525/roo/master/acme-nginx.sh)
+
 cat > /etc/nginx/conf.d/default.conf <<-EOF
 server {
     ### 1:
@@ -99,9 +119,6 @@ server {
 }
 EOF
 
-sed -i "s/www-data/root/g" /etc/nginx/nginx.conf
-
-systemctl daemon-reload
 systemctl restart nginx
 systemctl enable nginx.service
 
