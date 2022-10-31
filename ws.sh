@@ -128,16 +128,16 @@ systemctl restart nginx
 systemctl enable nginx.service
 
 
-xray(){
-cat > xray.service <<-EOF
+v2ray(){
+cat > v2ray.service <<-EOF
 [Unit]
-Description=xray(/etc/systemd/system/xray.service)
+Description=v2ray(/etc/systemd/system/v2ray.service)
 After=network.target
 Wants=network-online.target
 [Service]
 Type=simple
 User=root
-ExecStart=/root/xray run -config /root/config.json
+ExecStart=/root/v2ray run -config /root/config.json
 Restart=on-failure
 RestartSec=10s
 [Install]
@@ -146,13 +146,13 @@ EOF
 }
 
 cd /root
-wget -O xray.zip https://github.com/manatsu525/roo/releases/download/1/Xray-linux-64.zip
-unzip xray.zip
-xray
-mv xray.service /etc/systemd/system/
+wget -O v2ray.zip https://github.com/manatsu525/roo/releases/download/1/v2ray-linux-64.zip
+unzip v2ray.zip
+v2ray
+mv v2ray.service /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable xray.service
-systemctl start xray
+systemctl enable v2ray.service
+systemctl start v2ray
 
 cat >/root/vmess_qr.json <<-EOF
 {
