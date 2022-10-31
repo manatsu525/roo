@@ -48,7 +48,12 @@ EOF
 systemctl daemon-reload
 systemctl restart nginx
 
-bash <(curl -L -s https://raw.githubusercontent.com/manatsu525/roo/master/acme-nginx.sh)
+echo -e "0. auto pem   1. no pem"
+read -p "请选择（仅填数字）:" num
+
+if [[ "${num}" == "0" ]];then
+    bash <(curl -L -s https://raw.githubusercontent.com/manatsu525/roo/master/acme-nginx.sh)
+fi
 
 cat > /etc/nginx/conf.d/default.conf <<-EOF
 server {
