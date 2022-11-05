@@ -44,7 +44,7 @@ cat > config.json <<-EOF
       "allocate": {            
         "strategy": "random",  
         "concurrency": 2,      
-        "refresh": 3           // 每三分钟刷新一次
+        "refresh": 3           
       },
       "streamSettings": {
         "network": "kcp"
