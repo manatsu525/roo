@@ -6,8 +6,7 @@ read -p "input v2ray_port:" v2ray_port
 
 cat > config.json <<-EOF
 {
-    "inbound": [
-        {
+    "inbound": {
         "protocol": "vmess",
         "listen": "0.0.0.0",
         "port": ${v2ray_port},
@@ -15,10 +14,7 @@ cat > config.json <<-EOF
             "clients": [{
                     "id": "3e88bf4b-a1ab-4c36-bc83-ea7d263e5239"
                 }
-            ],
-            "detour": {
-                "to": "dynamicPort"
-          }
+            ]
         },
         "streamSettings": {
             "network": "kcp",
@@ -37,20 +33,6 @@ cat > config.json <<-EOF
             }
         }
     },
-    {
-      "protocol": "vmess",
-      "port": "30000-40000", 
-      "tag": "dynamicPort",
-      "allocate": {            
-        "strategy": "random",  
-        "concurrency": 2,      
-        "refresh": 3           
-      },
-      "streamSettings": {
-        "network": "kcp"
-      }
-    }
-    ],
 
     "outbound": {
         "protocol": "freedom"
