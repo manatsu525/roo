@@ -21,7 +21,7 @@ cat > config.json <<-EOF
           }
         },
         "streamSettings": {
-            "network": "kcp",
+            "network": "srtp",
             "kcpSettings": {
                 "mtu": 1200,
                 "tti": 30,
