@@ -21,7 +21,7 @@ cat > config.json <<-EOF
           }
         },
         "streamSettings": {
-            "network": "srtp",
+            "network": "kcp",
             "kcpSettings": {
                 "mtu": 1200,
                 "tti": 30,
@@ -31,7 +31,7 @@ cat > config.json <<-EOF
                 "readBufferSize": 2,
                 "writeBufferSize": 2,
                 "header": {
-                    "type": "utp"
+                    "type": "srtp"
                 },
                 "seed": "tsukasakuro"
             }
