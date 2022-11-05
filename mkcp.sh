@@ -39,7 +39,7 @@ cat > config.json <<-EOF
     },
     {
       "protocol": "vmess",
-      "port": "10000-20000", 
+      "port": "30000-40000", 
       "tag": "dynamicPort",
       "allocate": {            
         "strategy": "random",  
