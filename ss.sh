@@ -14,7 +14,8 @@ cat > config.json <<-EOF
     "method": "xchacha20-poly1305",
     "password": "sumire",
     "network": "tcp,udp"
-    },
+    }
+  },
 "outbound": {"protocol": "freedom"}
 }
 EOF
