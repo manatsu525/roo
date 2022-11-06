@@ -17,7 +17,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=root
-ExecStart=/root/shadowtls server --listen 0.0.0.0:{port} --server 127.0.0.1:${v2ray_port} --tls ${tls}:443 --password sumire
+ExecStart=/root/shadowtls server --listen 0.0.0.0:${port} --server 127.0.0.1:${v2ray_port} --tls ${tls}:443 --password sumire
 Restart=on-failure
 RestartSec=10s
 [Install]
