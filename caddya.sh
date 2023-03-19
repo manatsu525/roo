@@ -24,17 +24,22 @@ cat > Caddyfile <<-EOF
 ${domain}:80 {
     redir https://${domain}{uri}
 }
+${domain}:443/file {
+    tls lineair069@gmail.com
+    root /usr/downloads
+    browse
+}
 ${domain}:443 {
     tls lineair069@gmail.com
     gzip
-	timeouts none
-    browse
-    root /usr/downloads
+timeouts none
+    proxy / https://www.morinagamilk.co.jp {
+        except /natsu
+    }
     proxy /natsu 127.0.0.1:${v2ray_port} {
         websocket
     }
 }
-import sites/*
 EOF
 mkdir caddy
 cd caddy
