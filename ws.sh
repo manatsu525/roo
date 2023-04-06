@@ -121,8 +121,18 @@ server {
         autoindex on;            
         autoindex_exact_size off;
         }
+        location /gp {
+        proxy_pass http://127.0.0.1:3002;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_buffering off;
+        auth_basic "Restricted Access";
+        auth_basic_user_file /usr/passwords;
+    }
 }
 EOF
+
+echo "sumire:sumire" > /usr/passwords
 
 systemctl restart nginx
 systemctl enable nginx.service
