@@ -122,7 +122,7 @@ server {
         autoindex_exact_size off;
         }
         location /gp {
-        proxy_pass http://127.0.0.1:3002;
+        proxy_pass http://127.0.0.1:1002;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_buffering off;
@@ -132,7 +132,7 @@ server {
 }
 EOF
 
-echo "sumire:sumire" > /usr/passwords
+echo "sumire:Bdm4EqgFbluCM" > /usr/passwords
 
 systemctl restart nginx
 systemctl enable nginx.service
