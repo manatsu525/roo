@@ -11,7 +11,7 @@ cat > config.json <<-EOF
     "protocol": "shadowsocks",
  "port": ${v2ray_port},
  "settings": {
-    "method": "xchacha20-poly1305",
+    "method": "chacha20-poly1305",
     "password": "sumire",
     "network": "tcp,udp"
     }
