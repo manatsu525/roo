@@ -24,7 +24,7 @@ cat > Caddyfile <<-EOF
 ${domain}:80 {
     redir https://${domain}{uri}
 }
-${domain}:443/file {
+${domain}:443/file/ {
     tls lineair069@gmail.com
     root /usr/downloads
     browse
