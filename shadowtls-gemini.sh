@@ -11,7 +11,7 @@ echo "=================================================="
 # 定义默认变量
 SS_LOCAL_PORT="1080" # Shadowsocks 本地监听端口
 SS_SERVER_PORT="8388" # Shadowsocks 服务器端口 (内部端口)
-SS_PASSWORD="your_strong_password" # Shadowsocks 密码，请务必修改
+SS_PASSWORD="sumire" # Shadowsocks 密码，请务必修改
 SS_METHOD_DEFAULT="chacha20-ietf-poly1305" # Shadowsocks 默认加密方式
 TLS_LISTEN_PORT="443" # ShadowTLS 监听端口 (外部端口)
 TLS_FORWARD_ADDR="127.0.0.1" # ShadowTLS 转发地址 (Shadowsocks 本地地址)
