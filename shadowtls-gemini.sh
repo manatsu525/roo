@@ -15,7 +15,7 @@ SS_PASSWORD="sumire" # Shadowsocks 密码，请务必修改
 SS_METHOD_DEFAULT="chacha20-ietf-poly1305" # Shadowsocks 默认加密方式
 TLS_LISTEN_PORT="443" # ShadowTLS 监听端口 (外部端口)
 TLS_FORWARD_ADDR="127.0.0.1" # ShadowTLS 转发地址 (Shadowsocks 本地地址)
-TLS_HOST_DEFAULT="www.nikon.com" # 默认 TLS Host
+TLS_HOST_DEFAULT="www.honda.com" # 默认 TLS Host
 TLS_PASSWORD="sumire" # ShadowTLS 密码 (根据你的示例)
 
 # 检查是否以 root 用户运行
@@ -109,8 +109,7 @@ cat > /etc/systemd/system/shadowtls.service <<EOF
 [Unit]
 Description=ShadowTLS Forwarder
 After=network.target
-Requires=shadowsocks.service
-After=shadowsocks.service
+Wants=network-online.target
 
 [Service]
 User=root
