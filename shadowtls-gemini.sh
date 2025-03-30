@@ -114,7 +114,7 @@ Wants=network-online.target
 [Service]
 User=root
 Type=simple
-ExecStart=/root/shadowtls server --listen [::]:${TLS_LISTEN_PORT} --server 127.0.0.1:${SS_SERVER_PORT} --tls ${TLS_HOST}:443 --password ${TLS_PASSWORD} --v3
+ExecStart=/root/shadowtls --v3 server --listen [::]:${TLS_LISTEN_PORT} --server 127.0.0.1:${SS_SERVER_PORT} --tls ${TLS_HOST}:443 --password ${TLS_PASSWORD}
 Restart=on-failure
 
 [Install]
