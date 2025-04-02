@@ -297,7 +297,7 @@ case "$main_choice" in
         ;;
     2)
         # 卸载前确认
-        read -p "$(echo -e ${YELLOW}确定要卸载 Juicity 吗? 这将删除配置文件、证书和服务 (y/N): ${NC})" confirm_uninstall
+        read -p "确定要卸载 Juicity 吗? 这将删除配置文件、证书和服务 (y/N): )" confirm_uninstall
         if [[ "$confirm_uninstall" =~ ^[Yy]$ ]]; then
             uninstall_juicity
         else
