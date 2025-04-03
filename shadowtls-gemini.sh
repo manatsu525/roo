@@ -144,7 +144,7 @@ case "$choice" in
         mkdir -p /etc/shadowsocks-libev
         cat > /etc/shadowsocks-libev/config.json <<EOF
 {
-    "server": "0.0.0.0",
+    "server": "127.0.0.1",
     "server_port": $SS_SERVER_PORT,
     "local_port": $SS_LOCAL_PORT,
     "password": "$SS_PASSWORD",
