@@ -163,7 +163,7 @@ show_menu() {
 }
 
 # --- 主逻辑 ---
-set -e # 命令失败时立即退出
+
 check_root
 
 show_menu
