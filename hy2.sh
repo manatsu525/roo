@@ -1,163 +1,183 @@
 #!/bin/bash
 
-HYSTERIA_BIN="/usr/local/bin/hysteria"
-CONFIG_DIR="/etc/hysteria"
-SERVICE_FILE="/etc/systemd/system/hysteria.service"
+# Hysteria 2 安装/卸载脚本 (Debian) - 菜单交互版
+# 支持自定义密码，自签名证书，一键卸载
 
-# 检查root权限
+# --- 配置 ---
+BINARY_URL="https://github.com/manatsu525/roo/releases/download/1/hysteria-linux-amd64"
+INSTALL_PATH="/usr/local/bin/hysteria"
+CONFIG_DIR="/etc/hysteria"
+CONFIG_FILE="${CONFIG_DIR}/config.yaml"
+SERVICE_FILE="/etc/systemd/system/hysteria-server.service"
+CERT_FILE="${CONFIG_DIR}/server.crt"
+KEY_FILE="${CONFIG_DIR}/server.key"
+DEFAULT_PASSWORD="sumire"
+CERT_DAYS=3650 # 10 years
+
+# --- 工具函数 ---
+_info() { echo -e "\033[0;32m[信息]\033[0m $1"; }
+_warn() { echo -e "\033[0;33m[警告]\033[0m $1"; }
+_error() { echo -e "\033[0;31m[错误]\033[0m $1"; exit 1; }
+_cmd() { "$@" > /dev/null 2>&1 || _error "执行命令失败: $*"; } # 静默执行命令，失败则报错退出
+
+# --- 核心函数 ---
+
+# 检查 root 权限
 check_root() {
-    if [ "$EUID" -ne 0 ]; then
-        echo "请使用root权限运行此脚本"
-        exit 1
-    fi
+    [ "$(id -u)" -ne 0 ] && _error "请以 root 权限运行此脚本"
+}
+
+# 检查并安装依赖
+check_deps() {
+    for pkg in curl openssl; do
+        if ! command -v $pkg &> /dev/null; then
+            _info "安装依赖: $pkg ..."
+            _cmd apt update
+            _cmd apt install -y $pkg
+        fi
+    done
 }
 
 # 生成自签名证书
 generate_cert() {
-    echo "正在生成自签名证书（有效期10年）..."
+    _info "生成自签名 TLS 证书 (${CERT_DAYS} 天)..."
     openssl req -x509 -nodes -newkey ec:<(openssl ecparam -name prime256v1) \
-        -keyout $CONFIG_DIR/server.key -out $CONFIG_DIR/server.crt \
-        -subj "/CN=honda.com" -days 3650 -addext "subjectAltName=DNS:bing.com"
-}
-
-# 安装Hysteria
-install_hysteria() {
-    echo "正在安装Hysteria..."
-    wget -O $HYSTERIA_BIN https://github.com/manatsu525/roo/releases/download/1/hysteria-linux-amd64
-    chmod +x $HYSTERIA_BIN
+        -keyout "${KEY_FILE}" -out "${CERT_FILE}" -sha256 -days ${CERT_DAYS} \
+        -subj "/CN=localhost" > /dev/null 2>&1 || _error "生成证书失败"
+    _cmd chmod 600 "${KEY_FILE}"
 }
 
 # 生成配置文件
 generate_config() {
-    echo "正在生成配置文件..."
-    cat > $CONFIG_DIR/config.yaml <<EOF
-listen: :$PORT
-
+    local password="$1"
+    _info "创建配置文件: ${CONFIG_FILE}"
+    cat << EOF > "${CONFIG_FILE}"
+listen: :443
 tls:
-  cert: $CONFIG_DIR/server.crt
-  key: $CONFIG_DIR/server.key
-
+  cert: ${CERT_FILE}
+  key: ${KEY_FILE}
 auth:
   type: password
-  password: "$AUTH_PASSWORD"
-
-masquerade:
-  type: proxy
-  proxy:
-    url: "$MASQ_URL"
-    rewriteHost: true
+  password: ${password}
+obfs:
+  type: password
+  password: ${password}
 EOF
+    [ $? -ne 0 ] && _error "创建配置文件失败"
 }
 
-# 配置系统服务
-setup_service() {
-    echo "正在配置系统服务..."
-    cat > $SERVICE_FILE <<EOF
+# 创建 Systemd 服务文件
+create_service_file() {
+    _info "创建 Systemd 服务: ${SERVICE_FILE}"
+    cat << EOF > "${SERVICE_FILE}"
 [Unit]
-Description=Hysteria VPN Service
+Description=Hysteria 2 Service
 After=network.target
-
 [Service]
+Type=simple
 User=root
-WorkingDirectory=/etc/hysteria
-ExecStart=$HYSTERIA_BIN server -c $CONFIG_DIR/config.yaml
-Restart=always
-RestartSec=3
-
+WorkingDirectory=${CONFIG_DIR}
+ExecStart=${INSTALL_PATH} server --config ${CONFIG_FILE}
+Restart=on-failure
+RestartSec=3s
+LimitNOFILE=infinity
 [Install]
 WantedBy=multi-user.target
 EOF
-
-    systemctl daemon-reload
-    systemctl enable hysteria
-    systemctl start hysteria
 }
 
-# 交互式配置
-interactive_config() {
-    echo
-    echo "====== 基本配置 ======"
-    read -p "请输入监听端口（默认443）: " PORT
-    PORT=${PORT:-443}
-
-    echo
-    read -p "请输入认证密码（默认随机生成）: " AUTH_PASSWORD
-    if [ -z "$AUTH_PASSWORD" ]; then
-        AUTH_PASSWORD=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 16)
+# 执行安装流程
+do_install() {
+    local password=""
+    read -p $'\033[0;36m是否使用默认密码 '"'sumire'"'? (Y/n):\033[0m ' use_default
+    if [[ "$use_default" =~ ^[Nn]$ ]]; then
+        read -s -p $'\033[0;36m请输入你的 Hysteria 密码: \033[0m' password
+        echo
+        [ -z "$password" ] && _error "密码不能为空"
+    else
+        password="${DEFAULT_PASSWORD}"
     fi
+    _info "使用密码: ${password}"
 
-    echo
-    read -p "请输入伪装代理地址（默认https://www.honda.com/）: " MASQ_URL
-    MASQ_URL=${MASQ_URL:-"https://www.honda.com/"}
+    _info "开始安装 Hysteria 2 (来源: ${BINARY_URL})"
+    check_deps
+
+    _info "下载 Hysteria..."
+    _cmd curl -L -o "${INSTALL_PATH}" "${BINARY_URL}"
+    _cmd chmod +x "${INSTALL_PATH}"
+
+    _info "创建配置目录..."
+    _cmd mkdir -p "${CONFIG_DIR}"
+
+    generate_cert
+    generate_config "${password}"
+    create_service_file
+
+    _info "启用并启动服务..."
+    _cmd systemctl daemon-reload
+    _cmd systemctl enable hysteria-server
+    _cmd systemctl restart hysteria-server
+
+    sleep 2
+    _info "检查 Hysteria 服务状态:"
+    systemctl status hysteria-server --no-pager -l || _warn "服务可能启动失败, 请检查配置或日志 (journalctl -u hysteria-server -f)"
+
+    echo "----------------------------------------"
+    _info "Hysteria 2 安装完成!"
+    _info "  密码: ${password}"
+    _info "  配置: ${CONFIG_FILE}"
+    _info "  证书: ${CERT_FILE}, ${KEY_FILE} (自签名)"
+    _info "  如需修改配置, 编辑 ${CONFIG_FILE} 后运行: sudo systemctl restart hysteria-server"
+    echo "----------------------------------------"
 }
 
-# 显示配置信息
-show_info() {
+# 执行卸载流程
+do_uninstall() {
+    read -p $'\033[0;33m确定要卸载 Hysteria 2 并删除所有相关文件吗? (y/N):\033[0m ' confirm
+    if [[ "$confirm" =~ ^[Yy]$ ]]; then
+        _info "正在卸载 Hysteria 2..."
+        _cmd systemctl stop hysteria-server
+        _cmd systemctl disable hysteria-server
+        _cmd rm -f "${SERVICE_FILE}"
+        _cmd rm -f "${INSTALL_PATH}"
+        _cmd rm -rf "${CONFIG_DIR}"
+        _cmd systemctl daemon-reload
+        _info "Hysteria 2 已卸载。"
+        _info "如果设置过防火墙规则，请手动移除。"
+    else
+        _info "取消卸载。"
+    fi
+}
+
+# 显示主菜单
+show_menu() {
     clear
-    echo "====== 安装完成 ======"
-    echo "监听端口: $PORT"
-    echo "认证密码: $AUTH_PASSWORD"
-    echo "伪装URL: $MASQ_URL"
-    echo "证书路径: $CONFIG_DIR/server.crt"
-    echo
-    echo "管理命令:"
-    echo "启动服务: systemctl start hysteria"
-    echo "停止服务: systemctl stop hysteria"
-    echo "查看日志: journalctl -u hysteria -f"
-    echo
-    echo "客户端配置示例："
-    echo "server: your_server_ip:$PORT"
-    echo "auth: $AUTH_PASSWORD"
-    echo "tls:"
-    echo "  insecure: true"
-    echo "masquerade:"
-    echo "  type: proxy"
+    echo "===================================="
+    echo " Hysteria 2 管理脚本 (Debian)"
+    echo "===================================="
+    echo " 1) 安装 Hysteria 2"
+    echo " 2) 卸载 Hysteria 2"
+    echo " *) 退出脚本"
+    echo "------------------------------------"
+    read -p "请输入选项 [1-2]: " choice
 }
 
-# 卸载Hysteria
-uninstall() {
-    echo "正在卸载Hysteria..."
-    systemctl stop hysteria
-    systemctl disable hysteria
-    rm -f $SERVICE_FILE
-    rm -f $HYSTERIA_BIN
-    rm -rf $CONFIG_DIR
-    systemctl daemon-reload
-    echo "Hysteria已卸载"
-}
+# --- 主逻辑 ---
+set -e # 命令失败时立即退出
+check_root
 
-# 主菜单
-main_menu() {
-    clear
-    echo "====== Hysteria2 管理脚本 ======"
-    PS3='请选择操作: '
-    options=("安装" "卸载" "退出")
-    select opt in "${options[@]}"
-    do
-        case $opt in
-            "安装")
-                check_root
-                mkdir -p $CONFIG_DIR
-                install_hysteria
-                interactive_config
-                generate_cert
-                generate_config
-                setup_service
-                show_info
-                break
-                ;;
-            "卸载")
-                check_root
-                uninstall
-                break
-                ;;
-            "退出")
-                exit 0
-                ;;
-            *) echo "无效选项，请重新选择";;
-        esac
-    done
-}
+show_menu
 
-# 启动主菜单
-main_menu
+case "$choice" in
+    1)
+        do_install
+        ;;
+    2)
+        do_uninstall
+        ;;
+    *)
+        _info "退出脚本。"
+        ;;
+esac
+
+exit 0
