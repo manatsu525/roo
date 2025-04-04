@@ -205,7 +205,7 @@ EOF
 
         # 启用并启动 Shadowsocks 服务
         echo "正在启用并启动 Shadowsocks 服务..."
-        systemctl enable shadowsocks
+        systemctl enable shadowsocks-libev
         systemctl restart shadowsocks-libev # 使用 restart 确保加载新配置
 
         # 启用并启动 ShadowTLS 服务
