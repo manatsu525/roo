@@ -52,7 +52,7 @@ generate_config() {
     local password="$1"
     _info "创建配置文件: ${CONFIG_FILE}"
     cat << EOF > "${CONFIG_FILE}"
-listen: :443
+listen: :8443
 tls:
   cert: ${CERT_FILE}
   key: ${KEY_FILE}
