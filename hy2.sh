@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Hysteria 2 安装/卸载脚本 (Debian) - 菜单交互版
-# 支持自定义密码，自签名证书，一键卸载
+# Hysteria 2 安装/卸载脚本 (Debian) - 菜单交互版 v3
+# 支持自定义密码和端口, 无obfs, 自签名证书, 一键卸载
 
 # --- 配置 ---
 BINARY_URL="https://github.com/manatsu525/roo/releases/download/1/hysteria-linux-amd64"
@@ -12,13 +12,14 @@ SERVICE_FILE="/etc/systemd/system/hysteria-server.service"
 CERT_FILE="${CONFIG_DIR}/server.crt"
 KEY_FILE="${CONFIG_DIR}/server.key"
 DEFAULT_PASSWORD="sumire"
+DEFAULT_PORT="443"
 CERT_DAYS=3650 # 10 years
 
 # --- 工具函数 ---
 _info() { echo -e "\033[0;32m[信息]\033[0m $1"; }
 _warn() { echo -e "\033[0;33m[警告]\033[0m $1"; }
 _error() { echo -e "\033[0;31m[错误]\033[0m $1"; exit 1; }
-_cmd() { "$@" > /dev/null 2>&1 || _error "执行命令失败: $*"; } # 静默执行命令，失败则报错退出
+_cmd() { "$@" > /dev/null 2>&1 || _error "执行命令失败: $*"; }
 
 # --- 核心函数 ---
 
@@ -47,12 +48,13 @@ generate_cert() {
     _cmd chmod 600 "${KEY_FILE}"
 }
 
-# 生成配置文件
+# 生成配置文件 (无 obfs)
 generate_config() {
-    local password="$1"
+    local port="$1"
+    local password="$2"
     _info "创建配置文件: ${CONFIG_FILE}"
     cat << EOF > "${CONFIG_FILE}"
-listen: :8443
+listen: :${port}
 tls:
   cert: ${CERT_FILE}
   key: ${KEY_FILE}
@@ -86,15 +88,28 @@ EOF
 # 执行安装流程
 do_install() {
     local password=""
-    read -p $'\033[0;36m是否使用默认密码 '"'sumire'"'? (Y/n):\033[0m ' use_default
-    if [[ "$use_default" =~ ^[Nn]$ ]]; then
-        read -s -p $'\033[0;36m请输入你的 Hysteria 密码: \033[0m' password
+    local port=""
+
+    # 获取端口
+    read -p $'\033[0;36m请输入 Hysteria 监听端口 [默认: '"${DEFAULT_PORT}"']: \033[0m' input_port
+    port="${input_port:-${DEFAULT_PORT}}" # 如果用户直接回车，则使用默认值
+    # 简单的端口号验证
+    if ! [[ "$port" =~ ^[0-9]+$ ]] || [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
+        _error "无效的端口号: ${port}。请输入 1-65535 之间的数字。"
+    fi
+    _info "使用端口: ${port}"
+
+    # 获取密码
+    read -p $'\033[0;36m是否使用默认密码 '"'${DEFAULT_PASSWORD}'"'? (Y/n):\033[0m ' use_default_pw
+    if [[ "$use_default_pw" =~ ^[Nn]$ ]]; then
+        read -s -p $'\033[0;36m请输入你的 Hysteria 密码: \033[0m' input_password
         echo
-        [ -z "$password" ] && _error "密码不能为空"
+        [ -z "$input_password" ] && _error "密码不能为空"
+        password="${input_password}"
     else
         password="${DEFAULT_PASSWORD}"
     fi
-    _info "使用密码: ${password}"
+    _info "使用密码: ${password}" # 注意：生产环境密码不应直接打印
 
     _info "开始安装 Hysteria 2 (来源: ${BINARY_URL})"
     check_deps
@@ -107,7 +122,7 @@ do_install() {
     _cmd mkdir -p "${CONFIG_DIR}"
 
     generate_cert
-    generate_config "${password}"
+    generate_config "${port}" "${password}" # 传递端口和密码
     create_service_file
 
     _info "启用并启动服务..."
@@ -121,9 +136,11 @@ do_install() {
 
     echo "----------------------------------------"
     _info "Hysteria 2 安装完成!"
-    _info "  密码: ${password}"
-    _info "  配置: ${CONFIG_FILE}"
-    _info "  证书: ${CERT_FILE}, ${KEY_FILE} (自签名)"
+    _info "  监听端口: ${port}"
+    _info "  认证密码: ${password}"
+    _info "  配置文件: ${CONFIG_FILE}"
+    _info "  证书文件: ${CERT_FILE}, ${KEY_FILE} (自签名)"
+    _info "  客户端连接时，需要配置对应端口和密码，并忽略 TLS 证书验证。"
     _info "  如需修改配置, 编辑 ${CONFIG_FILE} 后运行: sudo systemctl restart hysteria-server"
     echo "----------------------------------------"
 }
@@ -150,7 +167,8 @@ do_uninstall() {
 show_menu() {
     clear
     echo "===================================="
-    echo " Hysteria 2 管理脚本 (Debian)"
+    echo " Hysteria 2 管理脚本 (Debian) v3 "
+    echo " (无 Obfs, 端口/密码可配)"
     echo "===================================="
     echo " 1) 安装 Hysteria 2"
     echo " 2) 卸载 Hysteria 2"
@@ -160,7 +178,6 @@ show_menu() {
 }
 
 # --- 主逻辑 ---
-
 check_root
 
 show_menu
