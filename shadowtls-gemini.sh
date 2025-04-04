@@ -105,6 +105,7 @@ case "$choice" in
         # 安装 Shadowsocks-libev
         echo "正在安装 Shadowsocks-libev..."
         apt install -y shadowsocks-libev
+        systemctl disable --now shadowsocks-libev.service
 
         # 选择 Shadowsocks 加密方式
         echo ""
