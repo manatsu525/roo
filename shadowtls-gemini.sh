@@ -105,7 +105,6 @@ case "$choice" in
         # 安装 Shadowsocks-libev
         echo "正在安装 Shadowsocks-libev..."
         apt install -y shadowsocks-libev
-        systemctl disable --now shadowsocks-libev.service
 
         # 选择 Shadowsocks 加密方式
         echo ""
@@ -207,7 +206,7 @@ EOF
         # 启用并启动 Shadowsocks 服务
         echo "正在启用并启动 Shadowsocks 服务..."
         systemctl enable shadowsocks
-        systemctl restart shadowsocks # 使用 restart 确保加载新配置
+        systemctl restart shadowsocks-libev # 使用 restart 确保加载新配置
 
         # 启用并启动 ShadowTLS 服务
         echo "正在启用并启动 ShadowTLS 服务..."
@@ -216,7 +215,7 @@ EOF
 
         # 检查 Shadowsocks 服务状态 (保持原始方式)
         echo "正在检查 Shadowsocks 服务状态..."
-        systemctl status shadowsocks
+        systemctl status shadowsocks-libev
 
         # 检查 ShadowTLS 服务状态 (保持原始方式)
         echo "正在检查 ShadowTLS 服务状态..."
