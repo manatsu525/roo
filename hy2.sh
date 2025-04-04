@@ -59,9 +59,6 @@ tls:
 auth:
   type: password
   password: ${password}
-obfs:
-  type: salamander
-  password: ${password}
 EOF
     [ $? -ne 0 ] && _error "创建配置文件失败"
 }
