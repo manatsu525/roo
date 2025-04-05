@@ -3,7 +3,7 @@
 INSTALL_DIR="/root"
 CADDY_BIN="${INSTALL_DIR}/caddy"
 CADDY_CONFIG="${INSTALL_DIR}/Caddyfile"
-CADDY_URL="https://github.com/manatsu525/roo/releases/download/2/caddy"
+CADDY_URL="https://github.com/manatsu525/roo/releases/download/naive/caddy"
 TLS_EMAIL="lineair069@gmail.com" # 你原来的邮箱
 AUTH_USER="sumire"             # 你原来的用户名
 AUTH_PASS="sumire"             # 你原来的密码
