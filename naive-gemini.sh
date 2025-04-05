@@ -43,7 +43,7 @@ route {
     }
 }
 EOF
-    mkdir -p "${FILE_ROOT}" # 确保文件服务器目录存在
+    #mkdir -p "${FILE_ROOT}" # 确保文件服务器目录存在
 }
 
 # 函数：启动 Caddy
