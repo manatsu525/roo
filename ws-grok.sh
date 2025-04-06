@@ -233,7 +233,7 @@ show_url() {
     if [ ! -f "$CONFIG_FILE" ]; then
         echo "配置文件不存在，请先搭建服务。"
         return
-    }
+    
     local config=$(jq -r '.inbounds[0]' "$CONFIG_FILE")
     local port=$(echo "$config" | jq -r '.port')
     local protocol=$(echo "$config" | jq -r '.protocol')
