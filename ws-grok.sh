@@ -6,7 +6,7 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-apt install uuidgen -y
+apt install uuid-runtime -y
 
 # 定义变量
 CONFIG_DIR="/usr/local/etc/v2ray"
