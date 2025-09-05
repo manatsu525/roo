@@ -1,548 +1,571 @@
 #!/bin/bash
 
-# V2Ray + Caddy + WS+TLS 管理脚本
-# 支持安装、卸载、查看配置等功能
+# VMess搭建管理脚本
+# 适用于Debian系统
 
+# 颜色定义
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
+YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
-NC='\033[0m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+CLEAR='\033[0m'
 
-V2RAY_CONFIG_DIR="/usr/local/etc/v2ray"
-V2RAY_CONFIG_FILE="$V2RAY_CONFIG_DIR/config.json"
-CADDY_CONFIG_FILE="/etc/caddy/Caddyfile"
-DOWNLOADS_DIR="/usr/downloads"
-SERVICE_NAME="v2ray"
+# 配置文件路径
+V2RAY_CONFIG="/usr/local/etc/v2ray/config.json"
+V2RAY_SERVICE="/etc/systemd/system/v2ray.service"
+NGINX_CONF_DIR="/etc/nginx/sites-available"
+NGINX_ENABLED_DIR="/etc/nginx/sites-enabled"
+DOWNLOAD_DIR="/usr/download"
+CERT_EMAIL="lineair069@gmail.com"
 
-# 日志函数
-log_info() {
-    echo -e "${GREEN}[INFO]${NC} $1"
-}
-
-log_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-# 检查系统
-check_system() {
-    if [[ ! -f /etc/debian_version ]]; then
-        log_error "此脚本仅支持 Debian 系统"
+# 检查root权限
+check_root() {
+    if [ "$EUID" -ne 0 ]; then 
+        echo -e "${RED}错误：请使用root权限运行此脚本${CLEAR}"
         exit 1
     fi
-    
-    if [[ $EUID -ne 0 ]]; then
-        log_error "请使用 root 用户运行此脚本"
-        exit 1
-    fi
-}
-
-# 生成随机字符串
-generate_random() {
-    local length=${1:-16}
-    tr -dc 'a-zA-Z0-9' < /dev/urandom | head -c $length
-}
-
-# 生成 UUID
-generate_uuid() {
-    if command -v uuidgen &> /dev/null; then
-        uuidgen
-    else
-        cat /proc/sys/kernel/random/uuid
-    fi
-}
-
-# 获取域名
-get_domain() {
-    while true; do
-        read -p "请输入你的域名: " domain
-        if [[ -n "$domain" ]]; then
-            echo "$domain"
-            break
-        else
-            log_error "域名不能为空"
-        fi
-    done
 }
 
 # 安装依赖
 install_dependencies() {
-    log_info "更新系统包..."
+    echo -e "${GREEN}正在安装依赖...${CLEAR}"
     apt update -y
-
-    log_info "安装必要依赖..."
-    apt install -y curl wget unzip jq
+    apt install -y wget unzip nginx certbot python3-certbot-nginx socat cron curl
 }
 
-# 安装 V2Ray
+# 下载并安装V2Ray
 install_v2ray() {
-    log_info "安装 V2Ray..."
+    echo -e "${GREEN}正在下载V2Ray...${CLEAR}"
+    cd /tmp
+    wget -O v2ray-linux-64.zip https://github.com/manatsu525/roo/releases/download/1/v2ray-linux-64.zip
     
-    # 下载安装脚本
-    curl -L https://raw.githubusercontent.com/v2fly/fhs-install-v2ray/master/install-release.sh | bash
+    # 创建目录
+    mkdir -p /usr/local/bin/v2ray
+    mkdir -p /usr/local/etc/v2ray
+    mkdir -p /var/log/v2ray
     
-    if [[ $? -ne 0 ]]; then
-        log_error "V2Ray 安装失败"
-        exit 1
-    fi
+    # 解压文件
+    unzip -o v2ray-linux-64.zip -d /usr/local/bin/v2ray
     
-    log_info "V2Ray 安装完成"
+    # 设置权限
+    chmod +x /usr/local/bin/v2ray/v2ray
+    chmod +x /usr/local/bin/v2ray/v2ctl
+    
+    # 创建systemd服务
+    cat > "$V2RAY_SERVICE" <<EOF
+[Unit]
+Description=V2Ray Service
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/v2ray/v2ray run -config $V2RAY_CONFIG
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    
+    systemctl daemon-reload
+    systemctl enable v2ray
 }
 
-# 安装 Caddy
-install_caddy() {
-    log_info "安装 Caddy..."
-    
-    # 添加 Caddy 官方源
-    apt install -y debian-keyring debian-archive-keyring apt-transport-https
-    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list
-    
-    apt update -y
-    apt install -y caddy
-    
-    if [[ $? -ne 0 ]]; then
-        log_error "Caddy 安装失败"
-        exit 1
-    fi
-    
-    log_info "Caddy 安装完成"
+# 生成UUID
+generate_uuid() {
+    cat /proc/sys/kernel/random/uuid
 }
 
-# 创建下载目录和文件浏览器
-setup_file_browser() {
-    log_info "设置文件浏览器..."
+# 配置VMess+WS+TLS
+configure_vmess_ws_tls() {
+    echo -e "${CYAN}配置 VMess+WS+TLS${CLEAR}"
     
-    mkdir -p "$DOWNLOADS_DIR"
-    chmod 755 "$DOWNLOADS_DIR"
+    read -p "请输入域名: " domain
+    read -p "请输入V2Ray端口 (默认10000): " v2_port
+    v2_port=${v2_port:-10000}
+    read -p "请输入路径 (默认/natsu): " ws_path
+    ws_path=${ws_path:-/natsu}
     
-    # 创建一些示例文件
-    echo "欢迎使用文件下载服务" > "$DOWNLOADS_DIR/README.txt"
-    echo "# 文件下载中心" > "$DOWNLOADS_DIR/index.md"
+    uuid=$(generate_uuid)
     
-    log_info "文件浏览器设置完成，目录: $DOWNLOADS_DIR"
-}
-
-# 配置 V2Ray
-configure_v2ray() {
-    local uuid=$(generate_uuid)
-    local ws_path="/$(generate_random 10)"
-    
-    log_info "配置 V2Ray..."
-    log_info "UUID: $uuid"
-    log_info "WebSocket 路径: $ws_path"
-    
-    mkdir -p "$V2RAY_CONFIG_DIR"
-    
-    cat > "$V2RAY_CONFIG_FILE" << EOF
+    # 创建V2Ray配置
+    cat > "$V2RAY_CONFIG" <<EOF
 {
   "log": {
-    "loglevel": "warning",
     "access": "/var/log/v2ray/access.log",
-    "error": "/var/log/v2ray/error.log"
+    "error": "/var/log/v2ray/error.log",
+    "loglevel": "info"
   },
-  "inbounds": [
-    {
-      "port": 10000,
-      "protocol": "vmess",
-      "settings": {
-        "clients": [
-          {
-            "id": "$uuid",
-            "level": 1,
-            "alterId": 0
-          }
-        ]
-      },
-      "streamSettings": {
-        "network": "ws",
-        "wsSettings": {
-          "path": "$ws_path"
-        }
+  "inbounds": [{
+    "port": $v2_port,
+    "listen": "127.0.0.1",
+    "protocol": "vmess",
+    "settings": {
+      "clients": [{
+        "id": "$uuid",
+        "alterId": 0
+      }]
+    },
+    "streamSettings": {
+      "network": "ws",
+      "wsSettings": {
+        "path": "$ws_path"
       }
     }
-  ],
-  "outbounds": [
-    {
-      "protocol": "freedom",
-      "settings": {}
-    }
-  ]
+  }],
+  "outbounds": [{
+    "protocol": "freedom",
+    "settings": {}
+  }]
 }
 EOF
 
-    # 创建日志目录
-    mkdir -p /var/log/v2ray
-    chown nobody:nogroup /var/log/v2ray
+    # 配置Nginx
+    configure_nginx_ws "$domain" "$v2_port" "$ws_path"
     
-    # 保存配置信息到文件
-    cat > "/root/v2ray_config.txt" << EOF
-V2Ray 配置信息
-=============
-UUID: $uuid
-WebSocket 路径: $ws_path
-端口: 10000 (内部端口，通过 Caddy 代理)
-协议: VMess
-网络: WebSocket + TLS
-EOF
-
-    log_info "V2Ray 配置完成"
-    return 0
+    # 申请证书
+    apply_certificate "$domain"
+    
+    # 保存配置信息
+    save_config "ws" "$domain" "$uuid" "443" "$ws_path"
+    
+    # 重启服务
+    systemctl restart v2ray
+    systemctl restart nginx
 }
 
-# 配置 Caddy
-configure_caddy() {
+# 配置VLess+WS+TLS
+configure_vless_ws_tls() {
+    echo -e "${CYAN}配置 VLess+WS+TLS${CLEAR}"
+    
+    read -p "请输入域名: " domain
+    read -p "请输入V2Ray端口 (默认10000): " v2_port
+    v2_port=${v2_port:-10000}
+    read -p "请输入路径 (默认/natsu): " ws_path
+    ws_path=${ws_path:-/natsu}
+    
+    uuid=$(generate_uuid)
+    
+    # 创建V2Ray配置
+    cat > "$V2RAY_CONFIG" <<EOF
+{
+  "log": {
+    "access": "/var/log/v2ray/access.log",
+    "error": "/var/log/v2ray/error.log",
+    "loglevel": "info"
+  },
+  "inbounds": [{
+    "port": $v2_port,
+    "listen": "127.0.0.1",
+    "protocol": "vless",
+    "settings": {
+      "clients": [{
+        "id": "$uuid",
+        "level": 0
+      }],
+      "decryption": "none"
+    },
+    "streamSettings": {
+      "network": "ws",
+      "wsSettings": {
+        "path": "$ws_path"
+      }
+    }
+  }],
+  "outbounds": [{
+    "protocol": "freedom",
+    "settings": {}
+  }]
+}
+EOF
+
+    # 配置Nginx
+    configure_nginx_ws "$domain" "$v2_port" "$ws_path"
+    
+    # 申请证书
+    apply_certificate "$domain"
+    
+    # 保存配置信息
+    save_config "vless" "$domain" "$uuid" "443" "$ws_path"
+    
+    # 重启服务
+    systemctl restart v2ray
+    systemctl restart nginx
+}
+
+# 配置VMess+mKCP
+configure_vmess_mkcp() {
+    echo -e "${CYAN}配置 VMess+mKCP${CLEAR}"
+    
+    read -p "请输入服务器端口 (默认8888): " port
+    port=${port:-8888}
+    
+    echo "请选择伪装类型:"
+    echo "1) none"
+    echo "2) srtp"
+    echo "3) utp"
+    echo "4) wechat-video"
+    echo "5) dtls"
+    echo "6) wireguard"
+    read -p "请选择 (1-6): " header_choice
+    
+    case $header_choice in
+        1) header_type="none" ;;
+        2) header_type="srtp" ;;
+        3) header_type="utp" ;;
+        4) header_type="wechat-video" ;;
+        5) header_type="dtls" ;;
+        6) header_type="wireguard" ;;
+        *) header_type="none" ;;
+    esac
+    
+    read -p "请输入mKCP seed (留空随机生成): " mkcp_seed
+    if [ -z "$mkcp_seed" ]; then
+        mkcp_seed=$(head -c 16 /dev/urandom | base64)
+    fi
+    
+    uuid=$(generate_uuid)
+    
+    # 创建V2Ray配置
+    cat > "$V2RAY_CONFIG" <<EOF
+{
+  "log": {
+    "access": "/var/log/v2ray/access.log",
+    "error": "/var/log/v2ray/error.log",
+    "loglevel": "info"
+  },
+  "inbounds": [{
+    "port": $port,
+    "protocol": "vmess",
+    "settings": {
+      "clients": [{
+        "id": "$uuid",
+        "alterId": 0
+      }]
+    },
+    "streamSettings": {
+      "network": "mkcp",
+      "kcpSettings": {
+        "mtu": 1350,
+        "tti": 20,
+        "uplinkCapacity": 10,
+        "downlinkCapacity": 100,
+        "congestion": false,
+        "readBufferSize": 2,
+        "writeBufferSize": 2,
+        "header": {
+          "type": "$header_type"
+        },
+        "seed": "$mkcp_seed"
+      }
+    }
+  }],
+  "outbounds": [{
+    "protocol": "freedom",
+    "settings": {}
+  }]
+}
+EOF
+    
+    # 保存配置信息
+    save_config "mkcp" "none" "$uuid" "$port" "" "$header_type" "$mkcp_seed"
+    
+    # 重启服务
+    systemctl restart v2ray
+}
+
+# 配置Nginx
+configure_nginx_ws() {
     local domain=$1
-    local ws_path=$(grep -o '"/[^"]*"' "$V2RAY_CONFIG_FILE" | grep -o '[^"]*' | head -1)
+    local v2_port=$2
+    local ws_path=$3
     
-    log_info "配置 Caddy..."
-    log_info "域名: $domain"
-    log_info "WebSocket 路径: $ws_path"
+    # 创建文件下载目录
+    mkdir -p "$DOWNLOAD_DIR"
     
-    cat > "$CADDY_CONFIG_FILE" << EOF
-$domain {
-    # WebSocket 代理到 V2Ray
-    handle $ws_path {
-        reverse_proxy 127.0.0.1:10000
+    # 创建Nginx配置文件
+    cat > "$NGINX_CONF_DIR/$domain" <<EOF
+server {
+    listen 80;
+    server_name $domain;
+    return 301 https://\$server_name\$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name $domain;
+    
+    ssl_certificate /etc/letsencrypt/live/$domain/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/$domain/privkey.pem;
+    
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers on;
+    
+    # 伪装网站反代
+    location / {
+        proxy_pass https://www.honda.com;
+        proxy_set_header Host www.honda.com;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_ssl_server_name on;
     }
     
-    # 文件浏览器伪装
-    handle /* {
-        file_server browse {
-            root $DOWNLOADS_DIR
-        }
+    # V2Ray WebSocket
+    location $ws_path {
+        proxy_redirect off;
+        proxy_pass http://127.0.0.1:$v2_port;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$http_host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
     }
     
-    # 自动 HTTPS
-    tls {
-        protocols tls1.2 tls1.3
-    }
-    
-    # 访问日志
-    log {
-        output file /var/log/caddy/access.log
-        format json
-    }
-    
-    # 错误处理
-    handle_errors {
-        respond "Page not found" 404
+    # 文件服务器
+    location /file {
+        alias $DOWNLOAD_DIR;
+        autoindex on;
+        autoindex_exact_size off;
+        autoindex_localtime on;
     }
 }
 EOF
-
-    # 创建日志目录
-    mkdir -p /var/log/caddy
-    chown caddy:caddy /var/log/caddy
     
-    log_info "Caddy 配置完成"
+    # 启用网站
+    ln -sf "$NGINX_CONF_DIR/$domain" "$NGINX_ENABLED_DIR/$domain"
 }
 
-# 启动服务
-start_services() {
-    log_info "启动服务..."
+# 申请证书
+apply_certificate() {
+    local domain=$1
+    echo -e "${GREEN}正在申请SSL证书...${CLEAR}"
     
-    # 启动 V2Ray
-    systemctl enable v2ray
-    systemctl start v2ray
+    # 先创建一个临时的nginx配置用于验证
+    cat > "$NGINX_CONF_DIR/${domain}_temp" <<EOF
+server {
+    listen 80;
+    server_name $domain;
     
-    if ! systemctl is-active --quiet v2ray; then
-        log_error "V2Ray 启动失败"
-        systemctl status v2ray
-        exit 1
-    fi
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+}
+EOF
     
-    # 启动 Caddy
-    systemctl enable caddy
-    systemctl restart caddy
+    ln -sf "$NGINX_CONF_DIR/${domain}_temp" "$NGINX_ENABLED_DIR/${domain}_temp"
+    systemctl reload nginx
     
-    if ! systemctl is-active --quiet caddy; then
-        log_error "Caddy 启动失败"
-        systemctl status caddy
-        exit 1
-    fi
+    # 申请证书
+    certbot certonly --webroot -w /var/www/html -d "$domain" --non-interactive --agree-tos --email "$CERT_EMAIL"
     
-    log_info "所有服务启动成功"
+    # 删除临时配置
+    rm -f "$NGINX_CONF_DIR/${domain}_temp" "$NGINX_ENABLED_DIR/${domain}_temp"
+    
+    # 设置自动更新
+    setup_cert_renewal "$domain"
 }
 
-# 显示配置信息
-show_config() {
-    if [[ ! -f "/root/v2ray_config.txt" ]]; then
-        log_error "找不到配置文件，请先安装 V2Ray"
-        return 1
-    fi
+# 设置证书自动更新
+setup_cert_renewal() {
+    local domain=$1
     
-    local domain=$(grep -E "^[^#]*{" "$CADDY_CONFIG_FILE" | head -1 | awk '{print $1}')
-    local uuid=$(grep -o '"id": "[^"]*"' "$V2RAY_CONFIG_FILE" | cut -d '"' -f 4)
-    local ws_path=$(grep -o '"path": "[^"]*"' "$V2RAY_CONFIG_FILE" | cut -d '"' -f 4)
+    # 创建更新脚本
+    cat > "/usr/local/bin/renew-cert-${domain}.sh" <<EOF
+#!/bin/bash
+certbot renew --cert-name $domain --quiet
+systemctl reload nginx
+EOF
     
-    echo
-    echo -e "${BLUE}========================================${NC}"
-    echo -e "${BLUE}         V2Ray 连接信息                 ${NC}"
-    echo -e "${BLUE}========================================${NC}"
-    echo -e "${GREEN}地址 (Address):${NC} $domain"
-    echo -e "${GREEN}端口 (Port):${NC} 443"
-    echo -e "${GREEN}用户ID (UUID):${NC} $uuid"
-    echo -e "${GREEN}额外ID (AlterID):${NC} 0"
-    echo -e "${GREEN}加密方式 (Security):${NC} auto"
-    echo -e "${GREEN}传输协议 (Network):${NC} ws"
-    echo -e "${GREEN}WebSocket路径 (Path):${NC} $ws_path"
-    echo -e "${GREEN}传输安全 (TLS):${NC} tls"
-    echo -e "${GREEN}跳过证书验证:${NC} false"
-    echo
-    echo -e "${YELLOW}伪装网站:${NC} https://$domain"
-    echo -e "${YELLOW}文件浏览器:${NC} https://$domain (访问 $DOWNLOADS_DIR)"
-    echo -e "${BLUE}========================================${NC}"
-    echo
+    chmod +x "/usr/local/bin/renew-cert-${domain}.sh"
+    
+    # 添加cron任务 - 每两个月更新一次
+    (crontab -l 2>/dev/null | grep -v "renew-cert-${domain}"; echo "0 3 1 */2 * /usr/local/bin/renew-cert-${domain}.sh") | crontab -
 }
 
-# 检查服务状态
-check_status() {
-    echo -e "${BLUE}========================================${NC}"
-    echo -e "${BLUE}         服务状态检查                   ${NC}"
-    echo -e "${BLUE}========================================${NC}"
+# 保存配置信息
+save_config() {
+    local type=$1
+    local domain=$2
+    local uuid=$3
+    local port=$4
+    local path=$5
+    local header=$6
+    local seed=$7
     
-    # 检查 V2Ray
-    if systemctl is-active --quiet v2ray; then
-        echo -e "${GREEN}V2Ray:${NC} 运行中 ✓"
-    else
-        echo -e "${RED}V2Ray:${NC} 未运行 ✗"
-    fi
-    
-    # 检查 Caddy
-    if systemctl is-active --quiet caddy; then
-        echo -e "${GREEN}Caddy:${NC} 运行中 ✓"
-    else
-        echo -e "${RED}Caddy:${NC} 未运行 ✗"
-    fi
-    
-    # 检查端口
-    if netstat -tlnp | grep -q ":443 "; then
-        echo -e "${GREEN}端口 443:${NC} 监听中 ✓"
-    else
-        echo -e "${RED}端口 443:${NC} 未监听 ✗"
-    fi
-    
-    if netstat -tlnp | grep -q ":10000 "; then
-        echo -e "${GREEN}端口 10000:${NC} 监听中 ✓"
-    else
-        echo -e "${RED}端口 10000:${NC} 未监听 ✗"
-    fi
-    
-    echo -e "${BLUE}========================================${NC}"
+    cat > "/usr/local/etc/v2ray/client_config.txt" <<EOF
+配置类型: $type
+域名: $domain
+UUID: $uuid
+端口: $port
+路径: $path
+伪装类型: $header
+mKCP Seed: $seed
+EOF
 }
 
-# 查看日志
-view_logs() {
-    echo "选择要查看的日志:"
-    echo "1. V2Ray 访问日志"
-    echo "2. V2Ray 错误日志"
-    echo "3. Caddy 访问日志"
-    echo "4. 系统服务日志 (V2Ray)"
-    echo "5. 系统服务日志 (Caddy)"
+# 显示配置URL
+show_url() {
+    if [ ! -f "/usr/local/etc/v2ray/client_config.txt" ]; then
+        echo -e "${RED}没有找到配置信息${CLEAR}"
+        return
+    fi
     
-    read -p "请选择 (1-5): " choice
+    echo -e "${GREEN}当前配置信息：${CLEAR}"
+    cat "/usr/local/etc/v2ray/client_config.txt"
+    
+    # 从配置文件读取信息
+    local type=$(grep "配置类型:" /usr/local/etc/v2ray/client_config.txt | cut -d' ' -f2)
+    local domain=$(grep "域名:" /usr/local/etc/v2ray/client_config.txt | cut -d' ' -f2)
+    local uuid=$(grep "UUID:" /usr/local/etc/v2ray/client_config.txt | cut -d' ' -f2)
+    local port=$(grep "端口:" /usr/local/etc/v2ray/client_config.txt | cut -d' ' -f2)
+    local path=$(grep "路径:" /usr/local/etc/v2ray/client_config.txt | cut -d' ' -f2)
+    
+    echo -e "\n${CYAN}客户端配置信息：${CLEAR}"
+    
+    if [[ "$type" == "ws" ]] || [[ "$type" == "vless" ]]; then
+        echo -e "${YELLOW}协议: $type${CLEAR}"
+        echo -e "${YELLOW}地址: $domain${CLEAR}"
+        echo -e "${YELLOW}端口: $port${CLEAR}"
+        echo -e "${YELLOW}UUID: $uuid${CLEAR}"
+        echo -e "${YELLOW}路径: $path${CLEAR}"
+        echo -e "${YELLOW}传输协议: ws${CLEAR}"
+        echo -e "${YELLOW}TLS: 开启${CLEAR}"
+    elif [[ "$type" == "mkcp" ]]; then
+        local header=$(grep "伪装类型:" /usr/local/etc/v2ray/client_config.txt | cut -d' ' -f2)
+        local seed=$(grep "mKCP Seed:" /usr/local/etc/v2ray/client_config.txt | cut -d' ' -f2-)
+        local server_ip=$(curl -s ip.sb)
+        
+        echo -e "${YELLOW}协议: vmess${CLEAR}"
+        echo -e "${YELLOW}地址: $server_ip${CLEAR}"
+        echo -e "${YELLOW}端口: $port${CLEAR}"
+        echo -e "${YELLOW}UUID: $uuid${CLEAR}"
+        echo -e "${YELLOW}传输协议: mkcp${CLEAR}"
+        echo -e "${YELLOW}伪装类型: $header${CLEAR}"
+        echo -e "${YELLOW}mKCP Seed: $seed${CLEAR}"
+    fi
+}
+
+# 修改配置
+modify_config() {
+    echo -e "${CYAN}修改配置${CLEAR}"
+    echo "1) 修改UUID"
+    echo "2) 修改端口"
+    echo "3) 修改路径"
+    echo "4) 重新配置"
+    read -p "请选择: " choice
     
     case $choice in
         1)
-            if [[ -f "/var/log/v2ray/access.log" ]]; then
-                tail -50 /var/log/v2ray/access.log
-            else
-                log_warn "V2Ray 访问日志文件不存在"
-            fi
+            new_uuid=$(generate_uuid)
+            sed -i "s/\"id\": \".*\"/\"id\": \"$new_uuid\"/" "$V2RAY_CONFIG"
+            systemctl restart v2ray
+            echo -e "${GREEN}UUID已更新为: $new_uuid${CLEAR}"
             ;;
         2)
-            if [[ -f "/var/log/v2ray/error.log" ]]; then
-                tail -50 /var/log/v2ray/error.log
-            else
-                log_warn "V2Ray 错误日志文件不存在"
-            fi
+            read -p "请输入新端口: " new_port
+            sed -i "s/\"port\": [0-9]*/\"port\": $new_port/" "$V2RAY_CONFIG"
+            systemctl restart v2ray
+            echo -e "${GREEN}端口已更新为: $new_port${CLEAR}"
             ;;
         3)
-            if [[ -f "/var/log/caddy/access.log" ]]; then
-                tail -50 /var/log/caddy/access.log | jq .
-            else
-                log_warn "Caddy 访问日志文件不存在"
-            fi
+            read -p "请输入新路径: " new_path
+            sed -i "s|\"path\": \".*\"|\"path\": \"$new_path\"|" "$V2RAY_CONFIG"
+            systemctl restart v2ray
+            echo -e "${GREEN}路径已更新为: $new_path${CLEAR}"
             ;;
         4)
-            journalctl -u v2ray -n 50
-            ;;
-        5)
-            journalctl -u caddy -n 50
-            ;;
-        *)
-            log_error "无效选择"
+            uninstall_all
+            install_v2ray_menu
             ;;
     esac
 }
 
-# 重启服务
-restart_services() {
-    log_info "重启服务..."
+# 卸载所有组件
+uninstall_all() {
+    echo -e "${RED}正在卸载所有组件...${CLEAR}"
     
-    systemctl restart v2ray
-    systemctl restart caddy
+    # 停止服务
+    systemctl stop v2ray 2>/dev/null
+    systemctl stop nginx 2>/dev/null
     
-    sleep 3
-    check_status
+    # 删除V2Ray
+    systemctl disable v2ray 2>/dev/null
+    rm -rf /usr/local/bin/v2ray
+    rm -rf /usr/local/etc/v2ray
+    rm -rf /var/log/v2ray
+    rm -f "$V2RAY_SERVICE"
+    
+    # 删除Nginx配置（保留证书）
+    rm -f $NGINX_CONF_DIR/*
+    rm -f $NGINX_ENABLED_DIR/*
+    
+    # 卸载nginx
+    apt remove --purge -y nginx nginx-common
+    
+    # 删除文件下载目录
+    rm -rf "$DOWNLOAD_DIR"
+    
+    # 删除证书更新脚本和cron任务
+    rm -f /usr/local/bin/renew-cert-*.sh
+    crontab -l 2>/dev/null | grep -v "renew-cert" | crontab -
+    
+    echo -e "${GREEN}卸载完成（证书已保留）${CLEAR}"
 }
 
-# 卸载
-uninstall() {
-    log_warn "即将卸载 V2Ray 和 Caddy，此操作不可逆！"
-    read -p "确认卸载？(y/N): " confirm
+# 安装菜单
+install_v2ray_menu() {
+    echo -e "${CYAN}请选择要安装的配置类型：${CLEAR}"
+    echo "1) VMess + WebSocket + TLS"
+    echo "2) VLess + WebSocket + TLS" 
+    echo "3) VMess + mKCP"
+    read -p "请选择 (1-3): " install_choice
     
-    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
-        log_info "取消卸载"
-        return
-    fi
-    
-    log_info "停止服务..."
-    systemctl stop v2ray caddy
-    systemctl disable v2ray caddy
-    
-    log_info "卸载 V2Ray..."
-    bash <(curl -L https://raw.githubusercontent.com/v2fly/fhs-install-v2ray/master/install-release.sh) --remove
-    
-    log_info "卸载 Caddy..."
-    apt remove -y caddy
-    
-    log_info "清理配置文件..."
-    rm -rf "$V2RAY_CONFIG_DIR"
-    rm -f "$CADDY_CONFIG_FILE"
-    rm -f "/root/v2ray_config.txt"
-    rm -rf "/var/log/v2ray"
-    rm -rf "/var/log/caddy"
-    
-    log_info "清理下载目录..."
-    read -p "是否删除下载目录 $DOWNLOADS_DIR ? (y/N): " del_downloads
-    if [[ "$del_downloads" == "y" || "$del_downloads" == "Y" ]]; then
-        rm -rf "$DOWNLOADS_DIR"
-        log_info "下载目录已删除"
-    fi
-    
-    log_info "卸载完成"
-}
-
-# 更新配置
-update_config() {
-    log_info "重新生成配置..."
-    
-    # 备份当前配置
-    if [[ -f "$V2RAY_CONFIG_FILE" ]]; then
-        cp "$V2RAY_CONFIG_FILE" "$V2RAY_CONFIG_FILE.bak"
-    fi
-    
-    if [[ -f "$CADDY_CONFIG_FILE" ]]; then
-        cp "$CADDY_CONFIG_FILE" "$CADDY_CONFIG_FILE.bak"
-    fi
-    
-    # 获取域名
-    local domain=$(get_domain)
-    
-    # 重新配置
-    configure_v2ray
-    configure_caddy "$domain"
-    
-    # 重启服务
-    restart_services
-    
-    log_info "配置更新完成"
-    show_config
-}
-
-# 安装主函数
-install_all() {
-    log_info "开始安装 V2Ray + Caddy + WS+TLS..."
-    
-    # 获取域名
-    local domain=$(get_domain)
-    
-    # 安装步骤
     install_dependencies
     install_v2ray
-    install_caddy
-    setup_file_browser
-    configure_v2ray
-    configure_caddy "$domain"
-    start_services
     
-    log_info "安装完成！"
-    show_config
+    case $install_choice in
+        1) configure_vmess_ws_tls ;;
+        2) configure_vless_ws_tls ;;
+        3) configure_vmess_mkcp ;;
+        *) echo -e "${RED}无效选择${CLEAR}" ;;
+    esac
 }
 
 # 主菜单
-show_menu() {
+main_menu() {
     clear
-    echo -e "${BLUE}========================================${NC}"
-    echo -e "${BLUE}      V2Ray + Caddy 管理脚本            ${NC}"
-    echo -e "${BLUE}      WebSocket + TLS + 文件浏览器      ${NC}"
-    echo -e "${BLUE}========================================${NC}"
-    echo
-    echo "1. 安装 V2Ray + Caddy"
-    echo "2. 卸载"
-    echo "3. 查看配置信息"
-    echo "4. 检查服务状态"
-    echo "5. 查看日志"
-    echo "6. 重启服务"
-    echo "7. 更新配置"
-    echo "0. 退出"
-    echo
+    echo -e "${PURPLE}==================================${CLEAR}"
+    echo -e "${CYAN}    V2Ray 搭建管理脚本${CLEAR}"
+    echo -e "${PURPLE}==================================${CLEAR}"
+    echo -e "${GREEN}1) 安装 V2Ray${CLEAR}"
+    echo -e "${YELLOW}2) 显示配置信息/URL${CLEAR}"
+    echo -e "${BLUE}3) 修改配置${CLEAR}"
+    echo -e "${RED}4) 卸载所有组件${CLEAR}"
+    echo -e "${PURPLE}0) 退出${CLEAR}"
+    echo -e "${PURPLE}==================================${CLEAR}"
+    
+    read -p "请选择操作: " choice
+    
+    case $choice in
+        1) install_v2ray_menu ;;
+        2) show_url ;;
+        3) modify_config ;;
+        4) uninstall_all ;;
+        0) exit 0 ;;
+        *) echo -e "${RED}无效选择${CLEAR}" ;;
+    esac
+    
+    echo -e "\n${GREEN}按任意键返回主菜单...${CLEAR}"
+    read -n 1
+    main_menu
 }
 
 # 主程序
-main() {
-    check_system
-    
-    while true; do
-        show_menu
-        read -p "请选择操作 (0-7): " choice
-        
-        case $choice in
-            1)
-                install_all
-                read -p "按回车键继续..."
-                ;;
-            2)
-                uninstall
-                read -p "按回车键继续..."
-                ;;
-            3)
-                show_config
-                read -p "按回车键继续..."
-                ;;
-            4)
-                check_status
-                read -p "按回车键继续..."
-                ;;
-            5)
-                view_logs
-                read -p "按回车键继续..."
-                ;;
-            6)
-                restart_services
-                read -p "按回车键继续..."
-                ;;
-            7)
-                update_config
-                read -p "按回车键继续..."
-                ;;
-            0)
-                log_info "退出脚本"
-                exit 0
-                ;;
-            *)
-                log_error "无效选择，请重新输入"
-                sleep 2
-                ;;
-        esac
-    done
-}
-
-# 运行主程序
-main "$@"
+check_root
+main_menu
