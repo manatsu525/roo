@@ -12,7 +12,7 @@ CONF_DIR="/etc/natsu"
 V2_CONF="/etc/natsu/v2ray.json"
 META_CONF="/etc/natsu/natsu.conf"
 SYSTEMD_UNIT="/etc/systemd/system/v2ray.service"
-DOWNLOAD_DIR="/usr/download"
+DOWNLOAD_DIR="/usr/downloads"
 NGINX_AVAIL="/etc/nginx/sites-available"
 NGINX_ENABL="/etc/nginx/sites-enabled"
 EMAIL_DEFAULT="lineair069@gmail.com"
@@ -119,7 +119,7 @@ server {
 
     # /file → 文件服务器
     location ^~ /file/ {
-        alias /usr/download/;
+        alias /usr/downloads/;
         autoindex on;
         autoindex_exact_size off;
         autoindex_localtime on;
