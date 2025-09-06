@@ -1,571 +1,475 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# natsu.sh - V2Ray/VLESS + Nginx (ws+tls, mkcp) interactive manager for Debian
+# Author: you
+# Requirements: Debian 10/11/12 (root), no firewall config (per request)
 
-# VMess搭建管理脚本
-# 适用于Debian系统
+set -euo pipefail
 
-# 颜色定义
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
-CLEAR='\033[0m'
-
-# 配置文件路径
-V2RAY_CONFIG="/usr/local/etc/v2ray/config.json"
-V2RAY_SERVICE="/etc/systemd/system/v2ray.service"
-NGINX_CONF_DIR="/etc/nginx/sites-available"
-NGINX_ENABLED_DIR="/etc/nginx/sites-enabled"
+V2RAY_URL="https://github.com/manatsu525/roo/releases/download/1/v2ray-linux-64.zip"
+INSTALL_DIR="/usr/local/natsu"
+BIN_DIR="/usr/local/bin"
+CONF_DIR="/etc/natsu"
+V2_CONF="/etc/natsu/v2ray.json"
+META_CONF="/etc/natsu/natsu.conf"
+SYSTEMD_UNIT="/etc/systemd/system/v2ray.service"
 DOWNLOAD_DIR="/usr/download"
-CERT_EMAIL="lineair069@gmail.com"
+NGINX_AVAIL="/etc/nginx/sites-available"
+NGINX_ENABL="/etc/nginx/sites-enabled"
+EMAIL_DEFAULT="lineair069@gmail.com"
+WS_PATH="/natsu"
+FILE_URI="/file"
 
-# 检查root权限
-check_root() {
-    if [ "$EUID" -ne 0 ]; then 
-        echo -e "${RED}错误：请使用root权限运行此脚本${CLEAR}"
-        exit 1
-    fi
+bold() { echo -e "\e[1m$*\e[0m"; }
+green() { echo -e "\e[32m$*\e[0m"; }
+red()   { echo -e "\e[31m$*\e[0m"; }
+
+need_root() {
+  if [[ $EUID -ne 0 ]]; then
+    red "请以 root 运行：sudo ./natsu.sh"
+    exit 1
+  fi
 }
 
-# 安装依赖
-install_dependencies() {
-    echo -e "${GREEN}正在安装依赖...${CLEAR}"
-    apt update -y
-    apt install -y wget unzip nginx certbot python3-certbot-nginx socat cron curl
+ensure_deps() {
+  apt-get update -y
+  apt-get install -y wget unzip jq uuid-runtime curl ca-certificates \
+                     nginx certbot python3-certbot-nginx
 }
 
-# 下载并安装V2Ray
-install_v2ray() {
-    echo -e "${GREEN}正在下载V2Ray...${CLEAR}"
-    cd /tmp
-    wget -O v2ray-linux-64.zip https://github.com/manatsu525/roo/releases/download/1/v2ray-linux-64.zip
-    
-    # 创建目录
-    mkdir -p /usr/local/bin/v2ray
-    mkdir -p /usr/local/etc/v2ray
-    mkdir -p /var/log/v2ray
-    
-    # 解压文件
-    unzip -o v2ray-linux-64.zip -d /usr/local/bin/v2ray
-    
-    # 设置权限
-    chmod +x /usr/local/bin/v2ray/v2ray
-    chmod +x /usr/local/bin/v2ray/v2ctl
-    
-    # 创建systemd服务
-    cat > "$V2RAY_SERVICE" <<EOF
+ensure_dirs() {
+  mkdir -p "$INSTALL_DIR" "$CONF_DIR" "$DOWNLOAD_DIR"
+  chmod 755 "$DOWNLOAD_DIR"
+}
+
+install_v2ray_bin() {
+  tmp="$(mktemp -d)"
+  wget -O "$tmp/v2ray.zip" "$V2RAY_URL"
+  unzip -o "$tmp/v2ray.zip" -d "$tmp"
+  if [[ -f "$tmp/v2ray" ]]; then
+    install -m 755 "$tmp/v2ray" "$BIN_DIR/v2ray"
+  elif [[ -f "$tmp/v2ray-linux-64/v2ray" ]]; then
+    install -m 755 "$tmp/v2ray-linux-64/v2ray" "$BIN_DIR/v2ray"
+  else
+    red "未在压缩包中找到 v2ray 可执行文件。"
+    exit 1
+  fi
+  rm -rf "$tmp"
+}
+
+write_systemd() {
+cat > "$SYSTEMD_UNIT" <<EOF
 [Unit]
-Description=V2Ray Service
+Description=V2Ray Service (natsu)
 After=network.target
-Wants=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/v2ray/v2ray run -config $V2RAY_CONFIG
+ExecStart=$BIN_DIR/v2ray -config $V2_CONF
 Restart=on-failure
 RestartSec=5s
+LimitNOFILE=1048576
 
 [Install]
 WantedBy=multi-user.target
 EOF
-    
-    systemctl daemon-reload
-    systemctl enable v2ray
+  systemctl daemon-reload
 }
 
-# 生成UUID
-generate_uuid() {
-    cat /proc/sys/kernel/random/uuid
+obtain_cert() {
+  local domain="\$1"
+  # use certbot with nginx installer (simplest); it will create a temp 80 vhost
+  certbot --nginx -d "\$domain" -m "$EMAIL_DEFAULT" --agree-tos --redirect --non-interactive || true
 }
 
-# 配置VMess+WS+TLS
-configure_vmess_ws_tls() {
-    echo -e "${CYAN}配置 VMess+WS+TLS${CLEAR}"
-    
-    read -p "请输入域名: " domain
-    read -p "请输入V2Ray端口 (默认10000): " v2_port
-    v2_port=${v2_port:-10000}
-    read -p "请输入路径 (默认/natsu): " ws_path
-    ws_path=${ws_path:-/natsu}
-    
-    uuid=$(generate_uuid)
-    
-    # 创建V2Ray配置
-    cat > "$V2RAY_CONFIG" <<EOF
-{
-  "log": {
-    "access": "/var/log/v2ray/access.log",
-    "error": "/var/log/v2ray/error.log",
-    "loglevel": "info"
-  },
-  "inbounds": [{
-    "port": $v2_port,
-    "listen": "127.0.0.1",
-    "protocol": "vmess",
-    "settings": {
-      "clients": [{
-        "id": "$uuid",
-        "alterId": 0
-      }]
-    },
-    "streamSettings": {
-      "network": "ws",
-      "wsSettings": {
-        "path": "$ws_path"
-      }
-    }
-  }],
-  "outbounds": [{
-    "protocol": "freedom",
-    "settings": {}
-  }]
-}
-EOF
+gen_nginx_conf() {
+  local domain="\$1"
+  local ws_port="\$2"
+  local site_conf="$NGINX_AVAIL/\$domain.conf"
 
-    # 配置Nginx
-    configure_nginx_ws "$domain" "$v2_port" "$ws_path"
-    
-    # 申请证书
-    apply_certificate "$domain"
-    
-    # 保存配置信息
-    save_config "ws" "$domain" "$uuid" "443" "$ws_path"
-    
-    # 重启服务
-    systemctl restart v2ray
-    systemctl restart nginx
-}
-
-# 配置VLess+WS+TLS
-configure_vless_ws_tls() {
-    echo -e "${CYAN}配置 VLess+WS+TLS${CLEAR}"
-    
-    read -p "请输入域名: " domain
-    read -p "请输入V2Ray端口 (默认10000): " v2_port
-    v2_port=${v2_port:-10000}
-    read -p "请输入路径 (默认/natsu): " ws_path
-    ws_path=${ws_path:-/natsu}
-    
-    uuid=$(generate_uuid)
-    
-    # 创建V2Ray配置
-    cat > "$V2RAY_CONFIG" <<EOF
-{
-  "log": {
-    "access": "/var/log/v2ray/access.log",
-    "error": "/var/log/v2ray/error.log",
-    "loglevel": "info"
-  },
-  "inbounds": [{
-    "port": $v2_port,
-    "listen": "127.0.0.1",
-    "protocol": "vless",
-    "settings": {
-      "clients": [{
-        "id": "$uuid",
-        "level": 0
-      }],
-      "decryption": "none"
-    },
-    "streamSettings": {
-      "network": "ws",
-      "wsSettings": {
-        "path": "$ws_path"
-      }
-    }
-  }],
-  "outbounds": [{
-    "protocol": "freedom",
-    "settings": {}
-  }]
-}
-EOF
-
-    # 配置Nginx
-    configure_nginx_ws "$domain" "$v2_port" "$ws_path"
-    
-    # 申请证书
-    apply_certificate "$domain"
-    
-    # 保存配置信息
-    save_config "vless" "$domain" "$uuid" "443" "$ws_path"
-    
-    # 重启服务
-    systemctl restart v2ray
-    systemctl restart nginx
-}
-
-# 配置VMess+mKCP
-configure_vmess_mkcp() {
-    echo -e "${CYAN}配置 VMess+mKCP${CLEAR}"
-    
-    read -p "请输入服务器端口 (默认8888): " port
-    port=${port:-8888}
-    
-    echo "请选择伪装类型:"
-    echo "1) none"
-    echo "2) srtp"
-    echo "3) utp"
-    echo "4) wechat-video"
-    echo "5) dtls"
-    echo "6) wireguard"
-    read -p "请选择 (1-6): " header_choice
-    
-    case $header_choice in
-        1) header_type="none" ;;
-        2) header_type="srtp" ;;
-        3) header_type="utp" ;;
-        4) header_type="wechat-video" ;;
-        5) header_type="dtls" ;;
-        6) header_type="wireguard" ;;
-        *) header_type="none" ;;
-    esac
-    
-    read -p "请输入mKCP seed (留空随机生成): " mkcp_seed
-    if [ -z "$mkcp_seed" ]; then
-        mkcp_seed=$(head -c 16 /dev/urandom | base64)
-    fi
-    
-    uuid=$(generate_uuid)
-    
-    # 创建V2Ray配置
-    cat > "$V2RAY_CONFIG" <<EOF
-{
-  "log": {
-    "access": "/var/log/v2ray/access.log",
-    "error": "/var/log/v2ray/error.log",
-    "loglevel": "info"
-  },
-  "inbounds": [{
-    "port": $port,
-    "protocol": "vmess",
-    "settings": {
-      "clients": [{
-        "id": "$uuid",
-        "alterId": 0
-      }]
-    },
-    "streamSettings": {
-      "network": "mkcp",
-      "kcpSettings": {
-        "mtu": 1350,
-        "tti": 20,
-        "uplinkCapacity": 10,
-        "downlinkCapacity": 100,
-        "congestion": false,
-        "readBufferSize": 2,
-        "writeBufferSize": 2,
-        "header": {
-          "type": "$header_type"
-        },
-        "seed": "$mkcp_seed"
-      }
-    }
-  }],
-  "outbounds": [{
-    "protocol": "freedom",
-    "settings": {}
-  }]
-}
-EOF
-    
-    # 保存配置信息
-    save_config "mkcp" "none" "$uuid" "$port" "" "$header_type" "$mkcp_seed"
-    
-    # 重启服务
-    systemctl restart v2ray
-}
-
-# 配置Nginx
-configure_nginx_ws() {
-    local domain=$1
-    local v2_port=$2
-    local ws_path=$3
-    
-    # 创建文件下载目录
-    mkdir -p "$DOWNLOAD_DIR"
-    
-    # 创建Nginx配置文件
-    cat > "$NGINX_CONF_DIR/$domain" <<EOF
+cat > "\$site_conf" <<'NGX'
 server {
     listen 80;
-    server_name $domain;
-    return 301 https://\$server_name\$request_uri;
+    listen [::]:80;
+    server_name DOMAIN_PLACEHOLDER;
+    # Certbot may keep http challenge here
+    location /.well-known/acme-challenge/ { root /var/www/html; }
+    location / { return 301 https://$host$request_uri; }
 }
 
 server {
     listen 443 ssl http2;
-    server_name $domain;
-    
-    ssl_certificate /etc/letsencrypt/live/$domain/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/$domain/privkey.pem;
-    
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
-    ssl_prefer_server_ciphers on;
-    
-    # 伪装网站反代
+    listen [::]:443 ssl http2;
+    server_name DOMAIN_PLACEHOLDER;
+
+    ssl_certificate /etc/letsencrypt/live/DOMAIN_PLACEHOLDER/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/DOMAIN_PLACEHOLDER/privkey.pem;
+
+    # 安全与性能可再优化
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:MozSSL:10m;
+
+    # 伪装站：反代 www.honda.com
     location / {
         proxy_pass https://www.honda.com;
         proxy_set_header Host www.honda.com;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_ssl_server_name on;
     }
-    
-    # V2Ray WebSocket
-    location $ws_path {
-        proxy_redirect off;
-        proxy_pass http://127.0.0.1:$v2_port;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$http_host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-    }
-    
-    # 文件服务器
-    location /file {
-        alias $DOWNLOAD_DIR;
+
+    # /file → 文件服务器
+    location ^~ /file/ {
+        alias /usr/download/;
         autoindex on;
         autoindex_exact_size off;
         autoindex_localtime on;
     }
-}
-EOF
-    
-    # 启用网站
-    ln -sf "$NGINX_CONF_DIR/$domain" "$NGINX_ENABLED_DIR/$domain"
-}
 
-# 申请证书
-apply_certificate() {
-    local domain=$1
-    echo -e "${GREEN}正在申请SSL证书...${CLEAR}"
-    
-    # 先创建一个临时的nginx配置用于验证
-    cat > "$NGINX_CONF_DIR/${domain}_temp" <<EOF
-server {
-    listen 80;
-    server_name $domain;
-    
-    location /.well-known/acme-challenge/ {
-        root /var/www/html;
+    # /natsu → WS 回源
+    location /natsu {
+        proxy_redirect off;
+        proxy_pass http://127.0.0.1:WS_PORT_PLACEHOLDER;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
     }
 }
-EOF
-    
-    ln -sf "$NGINX_CONF_DIR/${domain}_temp" "$NGINX_ENABLED_DIR/${domain}_temp"
-    systemctl reload nginx
-    
-    # 申请证书
-    certbot certonly --webroot -w /var/www/html -d "$domain" --non-interactive --agree-tos --email "$CERT_EMAIL"
-    
-    # 删除临时配置
-    rm -f "$NGINX_CONF_DIR/${domain}_temp" "$NGINX_ENABLED_DIR/${domain}_temp"
-    
-    # 设置自动更新
-    setup_cert_renewal "$domain"
+NGX
+
+  sed -i "s/DOMAIN_PLACEHOLDER/\$domain/g" "\$site_conf"
+  sed -i "s/WS_PORT_PLACEHOLDER/\$ws_port/g" "\$site_conf"
+  ln -sf "\$site_conf" "$NGINX_ENABL/\$domain.conf"
+  nginx -t
+  systemctl reload nginx
 }
 
-# 设置证书自动更新
-setup_cert_renewal() {
-    local domain=$1
-    
-    # 创建更新脚本
-    cat > "/usr/local/bin/renew-cert-${domain}.sh" <<EOF
-#!/bin/bash
-certbot renew --cert-name $domain --quiet
-systemctl reload nginx
-EOF
-    
-    chmod +x "/usr/local/bin/renew-cert-${domain}.sh"
-    
-    # 添加cron任务 - 每两个月更新一次
-    (crontab -l 2>/dev/null | grep -v "renew-cert-${domain}"; echo "0 3 1 */2 * /usr/local/bin/renew-cert-${domain}.sh") | crontab -
+setup_bimonthly_renew() {
+  # 每两个月的 1 号 03:15 触发 renew（1,3,5,7,9,11）
+  local cronf="/etc/cron.d/natsu-cert-renew"
+  cat > "\$cronf" <<'CR'
+# natsu: bimonthly certbot renew & reload
+15 3 1 1,3,5,7,9,11 * root certbot renew --quiet && systemctl reload nginx || true
+CR
 }
 
-# 保存配置信息
-save_config() {
-    local type=$1
-    local domain=$2
-    local uuid=$3
-    local port=$4
-    local path=$5
-    local header=$6
-    local seed=$7
-    
-    cat > "/usr/local/etc/v2ray/client_config.txt" <<EOF
-配置类型: $type
-域名: $domain
-UUID: $uuid
-端口: $port
-路径: $path
-伪装类型: $header
-mKCP Seed: $seed
+save_meta() {
+  # 统一保存元信息便于展示/修改
+  mkdir -p "$(dirname "$META_CONF")"
+  cat > "$META_CONF" <<EOF
+mode=$MODE            # 1: vmess(ws+tls)+vmess(mkcp)  2: vless(ws+tls)
+domain=$DOMAIN
+ws_port=$WS_PORT
+tls_port=443
+mkcp_port=${MKCP_PORT:-0}
+uuid=$UUID
+mkcp_header=${MKCP_HEADER:-none}
+mkcp_seed=${MKCP_SEED:-}
 EOF
 }
 
-# 显示配置URL
-show_url() {
-    if [ ! -f "/usr/local/etc/v2ray/client_config.txt" ]; then
-        echo -e "${RED}没有找到配置信息${CLEAR}"
-        return
-    fi
-    
-    echo -e "${GREEN}当前配置信息：${CLEAR}"
-    cat "/usr/local/etc/v2ray/client_config.txt"
-    
-    # 从配置文件读取信息
-    local type=$(grep "配置类型:" /usr/local/etc/v2ray/client_config.txt | cut -d' ' -f2)
-    local domain=$(grep "域名:" /usr/local/etc/v2ray/client_config.txt | cut -d' ' -f2)
-    local uuid=$(grep "UUID:" /usr/local/etc/v2ray/client_config.txt | cut -d' ' -f2)
-    local port=$(grep "端口:" /usr/local/etc/v2ray/client_config.txt | cut -d' ' -f2)
-    local path=$(grep "路径:" /usr/local/etc/v2ray/client_config.txt | cut -d' ' -f2)
-    
-    echo -e "\n${CYAN}客户端配置信息：${CLEAR}"
-    
-    if [[ "$type" == "ws" ]] || [[ "$type" == "vless" ]]; then
-        echo -e "${YELLOW}协议: $type${CLEAR}"
-        echo -e "${YELLOW}地址: $domain${CLEAR}"
-        echo -e "${YELLOW}端口: $port${CLEAR}"
-        echo -e "${YELLOW}UUID: $uuid${CLEAR}"
-        echo -e "${YELLOW}路径: $path${CLEAR}"
-        echo -e "${YELLOW}传输协议: ws${CLEAR}"
-        echo -e "${YELLOW}TLS: 开启${CLEAR}"
-    elif [[ "$type" == "mkcp" ]]; then
-        local header=$(grep "伪装类型:" /usr/local/etc/v2ray/client_config.txt | cut -d' ' -f2)
-        local seed=$(grep "mKCP Seed:" /usr/local/etc/v2ray/client_config.txt | cut -d' ' -f2-)
-        local server_ip=$(curl -s ip.sb)
-        
-        echo -e "${YELLOW}协议: vmess${CLEAR}"
-        echo -e "${YELLOW}地址: $server_ip${CLEAR}"
-        echo -e "${YELLOW}端口: $port${CLEAR}"
-        echo -e "${YELLOW}UUID: $uuid${CLEAR}"
-        echo -e "${YELLOW}传输协议: mkcp${CLEAR}"
-        echo -e "${YELLOW}伪装类型: $header${CLEAR}"
-        echo -e "${YELLOW}mKCP Seed: $seed${CLEAR}"
-    fi
+gen_v2_config_mode1() {
+  # vmess + ws + tls  与  vmess + mkcp 共存
+  # WS 入站走本地 127.0.0.1:$WS_PORT，由 Nginx TLS 回源
+  cat > "$V2_CONF" <<EOF
+{
+  "inbounds": [
+    {
+      "port": $WS_PORT,
+      "listen": "127.0.0.1",
+      "protocol": "vmess",
+      "settings": {
+        "clients": [{ "id": "$UUID", "alterId": 0 }]
+      },
+      "streamSettings": {
+        "network": "ws",
+        "wsSettings": { "path": "$WS_PATH", "headers": { "Host": "$DOMAIN" } }
+      }
+    },
+    {
+      "port": $MKCP_PORT,
+      "protocol": "vmess",
+      "settings": {
+        "clients": [{ "id": "$UUID", "alterId": 0 }]
+      },
+      "streamSettings": {
+        "network": "kcp",
+        "kcpSettings": {
+          "mtu": 1350,
+          "tti": 20,
+          "uplinkCapacity": 5,
+          "downlinkCapacity": 20,
+          "congestion": false,
+          "readBufferSize": 2,
+          "writeBufferSize": 2,
+          "header": { "type": "$MKCP_HEADER" },
+          "seed": "$MKCP_SEED"
+        }
+      }
+    }
+  ],
+  "outbounds": [{ "protocol": "freedom", "settings": {} }]
+}
+EOF
 }
 
-# 修改配置
-modify_config() {
-    echo -e "${CYAN}修改配置${CLEAR}"
-    echo "1) 修改UUID"
-    echo "2) 修改端口"
-    echo "3) 修改路径"
-    echo "4) 重新配置"
-    read -p "请选择: " choice
-    
-    case $choice in
-        1)
-            new_uuid=$(generate_uuid)
-            sed -i "s/\"id\": \".*\"/\"id\": \"$new_uuid\"/" "$V2RAY_CONFIG"
-            systemctl restart v2ray
-            echo -e "${GREEN}UUID已更新为: $new_uuid${CLEAR}"
-            ;;
-        2)
-            read -p "请输入新端口: " new_port
-            sed -i "s/\"port\": [0-9]*/\"port\": $new_port/" "$V2RAY_CONFIG"
-            systemctl restart v2ray
-            echo -e "${GREEN}端口已更新为: $new_port${CLEAR}"
-            ;;
-        3)
-            read -p "请输入新路径: " new_path
-            sed -i "s|\"path\": \".*\"|\"path\": \"$new_path\"|" "$V2RAY_CONFIG"
-            systemctl restart v2ray
-            echo -e "${GREEN}路径已更新为: $new_path${CLEAR}"
-            ;;
-        4)
-            uninstall_all
-            install_v2ray_menu
-            ;;
+gen_v2_config_mode2() {
+  # vless + ws + tls
+  cat > "$V2_CONF" <<EOF
+{
+  "inbounds": [
+    {
+      "port": $WS_PORT,
+      "listen": "127.0.0.1",
+      "protocol": "vless",
+      "settings": {
+        "decryption": "none",
+        "clients": [{ "id": "$UUID" }]
+      },
+      "streamSettings": {
+        "network": "ws",
+        "wsSettings": { "path": "$WS_PATH", "headers": { "Host": "$DOMAIN" } }
+      }
+    }
+  ],
+  "outbounds": [{ "protocol": "freedom", "settings": {} }]
+}
+EOF
+}
+
+restart_services() {
+  systemctl enable v2ray
+  systemctl restart v2ray
+  systemctl enable nginx
+  systemctl restart nginx
+}
+
+show_links() {
+  if [[ ! -f "$META_CONF" ]]; then
+    red "未找到元配置：$META_CONF"
+    return
+  fi
+  # shellcheck disable=SC1090
+  source "$META_CONF"
+
+  echo
+  bold "==== 连接信息 ===="
+
+  if [[ "$mode" == "1" ]]; then
+    # vmess ws+tls
+    vmess_ws_json=$(jq -n \
+      --arg v "2" \
+      --arg ps "natsu-vmess-ws" \
+      --arg add "$domain" \
+      --arg port "443" \
+      --arg id "$uuid" \
+      --arg aid "0" \
+      --arg net "ws" \
+      --arg type "none" \
+      --arg host "$domain" \
+      --arg path "$WS_PATH" \
+      --arg tls "tls" \
+      --arg sni "$domain" \
+      '{v:$v, ps:$ps, add:$add, port:$port, id:$id, aid:$aid, net:$net, type:$type, host:$host, path:$path, tls:$tls, sni:$sni}')
+    vmess_ws_link="vmess://$(echo -n "$vmess_ws_json" | base64 -w 0)"
+
+    # vmess mkcp
+    vmess_kcp_json=$(jq -n \
+      --arg v "2" \
+      --arg ps "natsu-vmess-kcp" \
+      --arg add "$domain" \
+      --arg port "$mkcp_port" \
+      --arg id "$uuid" \
+      --arg aid "0" \
+      --arg net "kcp" \
+      --arg type "$mkcp_header" \
+      --arg host "" \
+      --arg path "" \
+      --arg tls "" \
+      '{v:$v, ps:$ps, add:$add, port:$port, id:$id, aid:$aid, net:$net, type:$type, host:$host, path:$path, tls:$tls}')
+    vmess_kcp_link="vmess://$(echo -n "$vmess_kcp_json" | base64 -w 0)"
+
+    echo "VMess (WS+TLS): $vmess_ws_link"
+    echo "VMess (mKCP):   $vmess_kcp_link"
+    echo
+    echo "提示：mKCP 客户端需在 kcp 设置里选择 headerType=$mkcp_header，并设置 seed=$mkcp_seed"
+  else
+    # vless ws+tls
+    vless_link="vless://$uuid@$domain:443?encryption=none&type=ws&host=$domain&path=$(urlencode "$WS_PATH")&security=tls&sni=$domain#natsu-vless-ws"
+    echo "VLESS (WS+TLS): $vless_link"
+  fi
+
+  echo
+  echo "下载目录映射： https://$domain$FILE_URI → $DOWNLOAD_DIR"
+  echo "伪装落地页：   https://$domain/  (反代 www.honda.com)"
+}
+
+# URL encode helper inside bash
+urlencode() {
+  local LANG=C i c e s="$1"
+  for (( i=0; i<${#s}; i++ )); do
+    c=${s:$i:1}
+    case $c in
+      [a-zA-Z0-9.~_-]) e="$c" ;;
+      *) printf -v e '%%%02X' "'$c" ;;
     esac
+    printf '%s' "$e"
+  done
 }
 
-# 卸载所有组件
-uninstall_all() {
-    echo -e "${RED}正在卸载所有组件...${CLEAR}"
-    
-    # 停止服务
-    systemctl stop v2ray 2>/dev/null
-    systemctl stop nginx 2>/dev/null
-    
-    # 删除V2Ray
-    systemctl disable v2ray 2>/dev/null
-    rm -rf /usr/local/bin/v2ray
-    rm -rf /usr/local/etc/v2ray
-    rm -rf /var/log/v2ray
-    rm -f "$V2RAY_SERVICE"
-    
-    # 删除Nginx配置（保留证书）
-    rm -f $NGINX_CONF_DIR/*
-    rm -f $NGINX_ENABLED_DIR/*
-    
-    # 卸载nginx
-    apt remove --purge -y nginx nginx-common
-    
-    # 删除文件下载目录
-    rm -rf "$DOWNLOAD_DIR"
-    
-    # 删除证书更新脚本和cron任务
-    rm -f /usr/local/bin/renew-cert-*.sh
-    crontab -l 2>/dev/null | grep -v "renew-cert" | crontab -
-    
-    echo -e "${GREEN}卸载完成（证书已保留）${CLEAR}"
+install_flow() {
+  need_root
+  ensure_deps
+  ensure_dirs
+  install_v2ray_bin
+  write_systemd
+
+  echo
+  bold "选择模式："
+  echo "  1) vmess+ws+tls 与 vmess+mkcp 共存"
+  echo "  2) vless+ws+tls"
+  read -rp "请输入 1 或 2: " MODE
+
+  read -rp "请输入你的域名(已解析到此机): " DOMAIN
+  read -rp "WS 本地监听端口(建议 10000-20000，默认 10086): " WS_PORT
+  WS_PORT=${WS_PORT:-10086}
+
+  UUID=$(uuidgen)
+
+  if [[ "$MODE" == "1" ]]; then
+    read -rp "mKCP 监听端口(UDP，默认 40000): " MKCP_PORT
+    MKCP_PORT=${MKCP_PORT:-40000}
+    echo "可选 mKCP 伪装类型：none / srtp / utp / wechat-video / dtls / wireguard"
+    read -rp "mKCP 伪装类型(默认 wechat-video): " MKCP_HEADER
+    MKCP_HEADER=${MKCP_HEADER:-wechat-video}
+    read -rp "mKCP seed(任意字符串，默认 auto 随机): " MKCP_SEED
+    MKCP_SEED=${MKCP_SEED:-"natsu-$(uuidgen | tr -d '-')"}
+    gen_v2_config_mode1
+  else
+    gen_v2_config_mode2
+  fi
+
+  obtain_cert "$DOMAIN"
+  gen_nginx_conf "$DOMAIN" "$WS_PORT"
+  setup_bimonthly_renew
+  save_meta
+  restart_services
+
+  green "安装完成。"
+  show_links
 }
 
-# 安装菜单
-install_v2ray_menu() {
-    echo -e "${CYAN}请选择要安装的配置类型：${CLEAR}"
-    echo "1) VMess + WebSocket + TLS"
-    echo "2) VLess + WebSocket + TLS" 
-    echo "3) VMess + mKCP"
-    read -p "请选择 (1-3): " install_choice
-    
-    install_dependencies
-    install_v2ray
-    
-    case $install_choice in
-        1) configure_vmess_ws_tls ;;
-        2) configure_vless_ws_tls ;;
-        3) configure_vmess_mkcp ;;
-        *) echo -e "${RED}无效选择${CLEAR}" ;;
-    esac
+modify_flow() {
+  if [[ ! -f "$META_CONF" ]]; then red "未安装。"; exit 1; fi
+  source "$META_CONF"
+
+  echo
+  bold "当前模式：$mode  域名：$domain"
+  echo "1) 切换/重建配置"
+  echo "2) 仅修改 WS 本地端口 (当前 $ws_port)"
+  if [[ "$mode" == "1" ]]; then
+    echo "3) 修改 mKCP 端口/伪装类型/seed (当前 $mkcp_port/$mkcp_header/$mkcp_seed)"
+  fi
+  read -rp "选择: " CH
+
+  case "$CH" in
+    1)
+      install_flow
+      ;;
+    2)
+      read -rp "新 WS 端口: " WS_PORT
+      WS_PORT=${WS_PORT:-$ws_port}
+      WS_PATH="$WS_PATH" DOMAIN="$domain" UUID="$uuid"
+      if [[ "$mode" == "1" ]]; then
+        MKCP_PORT=${mkcp_port} MKCP_HEADER=${mkcp_header} MKCP_SEED=${mkcp_seed}
+        gen_v2_config_mode1
+      else
+        gen_v2_config_mode2
+      fi
+      gen_nginx_conf "$domain" "$WS_PORT"
+      sed -i "s/^ws_port=.*/ws_port=$WS_PORT/" "$META_CONF"
+      systemctl restart v2ray && systemctl reload nginx
+      ;;
+    3)
+      if [[ "$mode" != "1" ]]; then red "当前不是模式1。"; exit 1; fi
+      read -rp "新 mKCP 端口(回车保留 $mkcp_port): " MKCP_PORT
+      MKCP_PORT=${MKCP_PORT:-$mkcp_port}
+      read -rp "新 mKCP 伪装类型(回车保留 $mkcp_header): " MKCP_HEADER
+      MKCP_HEADER=${MKCP_HEADER:-$mkcp_header}
+      read -rp "新 mKCP seed(回车保留 $mkcp_seed): " MKCP_SEED
+      MKCP_SEED=${MKCP_SEED:-$mkcp_seed}
+      WS_PORT=${ws_port}
+      DOMAIN="$domain" UUID="$uuid"
+      gen_v2_config_mode1
+      sed -i "s/^mkcp_port=.*/mkcp_port=$MKCP_PORT/" "$META_CONF"
+      sed -i "s/^mkcp_header=.*/mkcp_header=$MKCP_HEADER/" "$META_CONF"
+      sed -i "s/^mkcp_seed=.*/mkcp_seed=$MKCP_SEED/" "$META_CONF"
+      systemctl restart v2ray
+      ;;
+    *)
+      ;;
+  esac
+
+  green "修改完成。"
+  show_links
 }
 
-# 主菜单
-main_menu() {
-    clear
-    echo -e "${PURPLE}==================================${CLEAR}"
-    echo -e "${CYAN}    V2Ray 搭建管理脚本${CLEAR}"
-    echo -e "${PURPLE}==================================${CLEAR}"
-    echo -e "${GREEN}1) 安装 V2Ray${CLEAR}"
-    echo -e "${YELLOW}2) 显示配置信息/URL${CLEAR}"
-    echo -e "${BLUE}3) 修改配置${CLEAR}"
-    echo -e "${RED}4) 卸载所有组件${CLEAR}"
-    echo -e "${PURPLE}0) 退出${CLEAR}"
-    echo -e "${PURPLE}==================================${CLEAR}"
-    
-    read -p "请选择操作: " choice
-    
-    case $choice in
-        1) install_v2ray_menu ;;
-        2) show_url ;;
-        3) modify_config ;;
-        4) uninstall_all ;;
-        0) exit 0 ;;
-        *) echo -e "${RED}无效选择${CLEAR}" ;;
-    esac
-    
-    echo -e "\n${GREEN}按任意键返回主菜单...${CLEAR}"
-    read -n 1
-    main_menu
+uninstall_flow() {
+  need_root
+  echo
+  bold "确认卸载？这将移除 V2Ray、Nginx 站点和 Nginx 包（证书将保留）。"
+  read -rp "输入 YES 确认: " ok
+  if [[ "$ok" != "YES" ]]; then echo "已取消"; exit 0; fi
+
+  systemctl stop v2ray || true
+  systemctl disable v2ray || true
+  rm -f "$SYSTEMD_UNIT"
+  systemctl daemon-reload
+
+  rm -f "$V2_CONF" || true
+  rm -f "$BIN_DIR/v2ray" || true
+  rm -rf "$INSTALL_DIR" || true
+
+  if [[ -f "$META_CONF" ]]; then
+    source "$META_CONF" || true
+    rm -f "$NGINX_ENABL/$domain.conf" "$NGINX_AVAIL/$domain.conf" || true
+  fi
+
+  # 移除 Nginx 包（仅保留证书目录 /etc/letsencrypt）
+  systemctl stop nginx || true
+  apt-get remove -y nginx nginx-common || true
+  apt-get purge -y nginx nginx-common || true
+  apt-get autoremove -y || true
+
+  rm -f /etc/cron.d/natsu-cert-renew || true
+  rm -rf "$CONF_DIR" || true
+
+  green "卸载完成。证书已保留在 /etc/letsencrypt。"
 }
 
-# 主程序
-check_root
-main_menu
+menu() {
+  bold "==== Natsu 管理脚本 ===="
+  echo "1) 安装/重新安装"
+  echo "2) 修改配置"
+  echo "3) 显示链接(URL)"
+  echo "4) 卸载并清理(Nginx+V2Ray)，保留证书"
+  echo "5) 重启服务"
+  echo "0) 退出"
+  read -rp "选择: " ch
+  case "$ch" in
+    1) install_flow ;;
+    2) modify_flow ;;
+    3) show_links ;;
+    4) uninstall_flow ;;
+    5) systemctl restart v2ray && systemctl restart nginx && green "已重启";;
+    0) exit 0 ;;
+    *) echo "无效选项" ;;
+  esac
+}
+
+main() {
+  need_root
+  menu
+}
+
+main "$@"
