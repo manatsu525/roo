@@ -140,7 +140,7 @@ $domain {
         }
     }
     
-    handle /file* {
+    handle_path /file* {
         root * /usr/downloads
         file_server browse
     }
@@ -239,6 +239,9 @@ EOF
     local ws_base64=$(echo -n "$ws_json" | base64 -w 0)
     echo -e "\n${YELLOW}VMess (WS+TLS):${NC}"
     echo -e "${BLUE}vmess://${ws_base64}${NC}"
+    echo -e "\n${YELLOW}VMess (WS+TLS):${NC}"
+    echo -e "${BLUE}vmess://${ws_base64}${NC}"
+ 
     
     # mKCP链接
     local mkcp_json=$(cat <<EOF
