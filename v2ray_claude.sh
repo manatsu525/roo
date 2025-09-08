@@ -141,9 +141,8 @@ $domain {
     }
     
     handle /file* {
-        file_server browse {
-            root /usr/downloads
-        }
+        root * /usr/downloads
+        file_server browse
     }
     
     handle {
